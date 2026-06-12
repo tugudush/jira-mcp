@@ -1,5 +1,12 @@
 # Jira MCP Server — Plan
 
+> **Status (2026-06-12)** — 🚧 **In development**
+> ✅ **Phase 0** done (scaffolding, commit [`752f58d`](https://github.com/tugudush/jira-mcp/commit/752f58d), pushed to `origin/main`)
+> ⏭️ **Phase 1** next — core infrastructure (`config.ts`, real `api.ts`, `errors.ts`, formatters, JMESPath, real `index.ts` with `McpServer`).
+> See [Progress Log](#progress-log) for the running record and §9 for the full phased plan.
+
+---
+
 ## 1. Background & Motivation
 
 - **Atlassian MCP (old SSE method)** is being deprecated / discontinued on **June 30, 2026**
@@ -85,11 +92,11 @@ without runtime JSON parsing):
   "type": "module",
   "engines": { "node": ">=20.0.0" },
   "scripts": {
-    "dev": "tsx watch src/index.ts", // not `tsc --watch`
+    "dev": "tsx watch src/index.ts",
     "prebuild": "tsx scripts/sync-version.ts",
     "build": "tsc",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src --ext .ts --max-warnings 0",
+    "lint": "eslint src scripts tests *.config.ts --ext .ts --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
@@ -97,6 +104,7 @@ without runtime JSON parsing):
     "test:coverage": "vitest run --coverage",
     "ltfb": "npm run lint && npm run type-check && npm run format && npm run build",
     "start": "node dist/index.js",
+    "prepare": "husky",
   },
 }
 ```
@@ -597,15 +605,15 @@ into the consumer repo and how the model picks it up automatically.
 
 A running record of phases as they land. Updated with each phase commit.
 
-### ✅ Phase 0 — Scaffolding — _completed 2026-06-12_
+### ✅ Phase 0 — Scaffolding — _completed 2026-06-12, commit `752f58d`_
 
-**What landed**
+**What landed** (19 files, ~1,200 lines)
 
-- `package.json` (`@tugudush/jira-mcp@0.1.0`, ESM, `engines.node >= 20.0.0`, bin: `jira-mcp`, scripts: `dev/build/type-check/lint/format/test/ltfb/start/prepare`, deps: `@modelcontextprotocol/sdk ^1.29` + `zod ^4.3`, devDeps: TS 6, Vitest 4, ESLint 10, Prettier 3.8, husky 9, lint-staged 15, tsx 4).
+- `package.json` (`@tugudush/jira-mcp@0.1.0`, ESM, `engines.node >= 20.0.0`, bin: `jira-mcp`, scripts: `dev/build/type-check/lint/format/format:check/test/test:watch/test:coverage/ltfb/start/prepare`, deps: `@modelcontextprotocol/sdk ^1.29` + `zod ^4.3`, devDeps: TS 6, Vitest 4, ESLint 10, Prettier 3.8, husky 9, lint-staged 15, tsx 4).
 - `tsconfig.json` (ES2022 target, `NodeNext` module + resolution, strict, `outDir=dist`, `rootDir=src`, declaration + source maps).
 - `vitest.config.ts` (30s timeout, v8 coverage, `text` + `html` reporters).
-- `eslint.config.js` (flat config — `js.configs.recommended` + `src/scripts/tests/**\/*.ts` block, `tsPlugin`, `sonarjsPlugin`, `eslintConfigPrettier`; complexity 10 / cognitive 15).
-- `.lintstagedrc.json` (eslint + prettier on staged files).
+- `eslint.config.js` (flat config; explicit `ignores` block for `dist/`/`node_modules/`/`coverage/`/`eslint.config.js`; `files` glob covers `src/`, `scripts/`, `tests/`, `*.config.ts`; uses `tsPlugin`, `sonarjsPlugin`, `eslintConfigPrettier`; complexity 10 / cognitive 15).
+- `.lintstagedrc.json` (6 patterns — `src/`, `scripts/`, `tests/`, `*.config.ts` get eslint+prettier; `eslint.config.js` gets prettier-only; `*.{json,md,yml,yaml}` gets prettier-only).
 - `.nvmrc` = `20`.
 - `.gitignore` (node_modules, dist, coverage, logs, .env, IDE files; `src/generated/version.ts` intentionally tracked).
 - `.npmignore` (everything except `dist/`, `README.md`, `LICENSE`).
@@ -628,10 +636,32 @@ A running record of phases as they land. Updated with each phase commit.
 | `npm run build`      | prebuild + tsc → `dist/index.js` + `index.d.ts` + `dist/generated/version.js` + source maps |
 | `npm start`          | boots, prints `VERSION=0.1.0`                                                               |
 | `npm run ltfb`       | lint → type-check → format → prebuild → build, all clean                                    |
+| `husky pre-commit`   | lint-staged passes on all 16 staged files (4 eslint tasks + prettier)                       |
 
-**One small deviation from plan §3.4**: added `format:check` script (`prettier --check .`) — useful for CI. Also pinned `prepare: husky` so `npm install` (not just `npm ci`) wires up git hooks.
+**Drift from plan §3.4** (committed in this phase)
 
-**Next**: Phase 1 — Core infrastructure (`config.ts`, real `api.ts`, `errors.ts`, formatters, JMESPath filter, real `index.ts` with `McpServer`).
+1. `lint` script broadened: `eslint src` → `eslint src scripts tests *.config.ts` — needed so the eslint config's `*.config.ts` glob is reachable from `npm run lint`, not just from lint-staged.
+2. Added `format:check` script (`prettier --check .`) — useful for CI.
+3. Added `prepare: husky` — so `npm install` (not just `npm ci`) wires up git hooks.
+
+**Lessons learned** (kept for Phase 1+ contributors)
+
+- **ESLint flat config quirk:** the initial `files: ['src/**/*.ts', 'scripts/**/*.ts', 'tests/**/*.ts']` glob left root-level `vitest.config.ts` and `eslint.config.js` with no matching rule set, so ESLint warned on them. Fix: add `*.config.ts` to the `files` glob, and put `eslint.config.js` in an explicit `ignores` block. The matching lint-staged pattern was also widened to `src/**/*.{ts,js,mjs}` + `scripts/...` + `tests/...` + `*.config.ts` (eslint) + `eslint.config.js` (prettier-only) so pre-commit doesn't try to lint a file with no config.
+- **Pre-commit hook works as advertised** — the very first commit attempt was blocked by the husky pre-commit hook, which is exactly the point. Don't disable it for "just one commit".
+
+**Repository state after Phase 0**
+
+```text
+$ git log --oneline
+752f58d (HEAD -> main, origin/main) chore: scaffold jira-mcp v0.1.0 (Phase 0)
+4452a07 initial commit
+
+$ git status
+On branch main
+nothing to commit, working tree clean
+```
+
+**Next**: Phase 1 — Core infrastructure (`config.ts` Zod-validated env, real `api.ts` with Basic Auth + `AbortController` timeout (UX2) + read-only guard, `errors.ts` typed classes, `formatters/text|json|toon`, `filters/jmespath.ts`, real `src/index.ts` with `McpServer` + `StdioServerTransport` + one smoke tool to validate the dev loop). ETA per plan: 1 day.
 
 ---
 
