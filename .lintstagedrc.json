@@ -1,0 +1,8 @@
+{
+  "src/**/*.{ts,js,mjs}": ["eslint --max-warnings 0", "prettier --write"],
+  "scripts/**/*.{ts,js,mjs}": ["eslint --max-warnings 0", "prettier --write"],
+  "tests/**/*.{ts,js,mjs}": ["eslint --max-warnings 0", "prettier --write"],
+  "*.config.ts": ["eslint --max-warnings 0", "prettier --write"],
+  "eslint.config.js": ["prettier --write"],
+  "*.{json,md,yml,yaml}": ["prettier --write"]
+}

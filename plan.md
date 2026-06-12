@@ -231,13 +231,13 @@ src/
 Lifted from video-context-mcp's `src/index.ts`:
 
 ```ts
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 const server = new McpServer(
   { name: "jira-mcp", version: VERSION },
   { capabilities: { logging: {} } },
-)
+);
 
 server.registerTool(
   "jira_search_issues",
@@ -247,10 +247,10 @@ server.registerTool(
     inputSchema: searchIssuesSchema,
   },
   searchIssuesHandler,
-)
+);
 
-const transport = new StdioServerTransport()
-await server.connect(transport)
+const transport = new StdioServerTransport();
+await server.connect(transport);
 ```
 
 ### Cross-cutting features (port from bitbucket-mcp + new)
@@ -478,12 +478,12 @@ into the consumer repo and how the model picks it up automatically.
 
 ### Phase 0 — Scaffolding (½ day)
 
-- [ ] `npm init` with `type: module` and `engines.node: ">=20.0.0"`
-- [ ] Add deps from §3.6; `npm install`
-- [ ] Add `vitest.config.ts`, `eslint.config.js` (flat, with sonarjs), `tsconfig.json` (ES2022 / NodeNext), `.nvmrc` (20)
-- [ ] Husky + `lint-staged` pre-commit on staged files (run `ltfb` subset)
-- [ ] CI workflow mirroring bitbucket-mcp (lint + type-check + test + build)
-- [ ] `README.md` skeleton (copy from bitbucket-mcp, swap branding)
+- [x] `npm init` with `type: module` and `engines.node: ">=20.0.0"`
+- [x] Add deps from §3.6; `npm install` (296 packages, 2m, exit 0)
+- [x] Add `vitest.config.ts`, `eslint.config.js` (flat, with sonarjs), `tsconfig.json` (ES2022 / NodeNext), `.nvmrc` (20)
+- [x] Husky + `lint-staged` pre-commit on staged files (run `ltfb` subset)
+- [x] CI workflow mirroring bitbucket-mcp (lint + type-check + test + build)
+- [x] `README.md` skeleton (copy from bitbucket-mcp, swap branding)
 
 ### Phase 1 — Core infrastructure (1 day)
 
@@ -590,6 +590,48 @@ into the consumer repo and how the model picks it up automatically.
 18. ✅ **`AGENTS.md` project defaults** (UX4) — ship `docs/AGENTS.md.example` so users can commit project-level Jira project key + `maxResults=10` defaults. Pattern from atlassian (Rovo).
 19. ✅ **MseeP security badge** (UX5) — register with [mseep.ai](https://mseep.ai) before v1.0 release. Pattern from b1ff.
 20. ✅ **Jira-only scope, TypeScript stack, npm-installable** — explicit non-goals added to [competitors.md](competitors.md) §5.3: no remote server, no OAuth-only, no Jira+Confluence bundle, no Tempo/Compass/Bitbucket, no multi-tenant proxy, no Python.
+
+---
+
+## Progress Log
+
+A running record of phases as they land. Updated with each phase commit.
+
+### ✅ Phase 0 — Scaffolding — _completed 2026-06-12_
+
+**What landed**
+
+- `package.json` (`@tugudush/jira-mcp@0.1.0`, ESM, `engines.node >= 20.0.0`, bin: `jira-mcp`, scripts: `dev/build/type-check/lint/format/test/ltfb/start/prepare`, deps: `@modelcontextprotocol/sdk ^1.29` + `zod ^4.3`, devDeps: TS 6, Vitest 4, ESLint 10, Prettier 3.8, husky 9, lint-staged 15, tsx 4).
+- `tsconfig.json` (ES2022 target, `NodeNext` module + resolution, strict, `outDir=dist`, `rootDir=src`, declaration + source maps).
+- `vitest.config.ts` (30s timeout, v8 coverage, `text` + `html` reporters).
+- `eslint.config.js` (flat config — `js.configs.recommended` + `src/scripts/tests/**\/*.ts` block, `tsPlugin`, `sonarjsPlugin`, `eslintConfigPrettier`; complexity 10 / cognitive 15).
+- `.lintstagedrc.json` (eslint + prettier on staged files).
+- `.nvmrc` = `20`.
+- `.gitignore` (node_modules, dist, coverage, logs, .env, IDE files; `src/generated/version.ts` intentionally tracked).
+- `.npmignore` (everything except `dist/`, `README.md`, `LICENSE`).
+- `.github/workflows/ci.yml` (Node 20 + 22 matrix, lint → type-check → test → build).
+- `.husky/pre-commit` = `npx lint-staged`.
+- `scripts/sync-version.ts` (prebuild hook writes `src/generated/version.ts` from `package.json`).
+- `src/index.ts` Phase-0 stub (boots, prints `VERSION`; replaced in Phase 1).
+- `src/generated/version.ts` (committed at `0.1.0` so fresh `npm ci` works; prebuild overwrites it).
+- `tests/smoke.test.ts` (Vitest; verifies `VERSION` is a semver string).
+- `README.md` (Why / Requirements / Install × 3 / Config / Env vars / Features / Dev / License).
+
+**Verification — all green**
+
+| Command              | Result                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------- |
+| `npm install`        | 296 packages in 2m, exit 0                                                                  |
+| `npm test`           | 1/1 passed (Vitest 4.1.8, 1.47s)                                                            |
+| `npm run type-check` | clean (TS 6, strict, NodeNext)                                                              |
+| `npm run lint`       | clean (max-warnings 0)                                                                      |
+| `npm run build`      | prebuild + tsc → `dist/index.js` + `index.d.ts` + `dist/generated/version.js` + source maps |
+| `npm start`          | boots, prints `VERSION=0.1.0`                                                               |
+| `npm run ltfb`       | lint → type-check → format → prebuild → build, all clean                                    |
+
+**One small deviation from plan §3.4**: added `format:check` script (`prettier --check .`) — useful for CI. Also pinned `prepare: husky` so `npm install` (not just `npm ci`) wires up git hooks.
+
+**Next**: Phase 1 — Core infrastructure (`config.ts`, real `api.ts`, `errors.ts`, formatters, JMESPath filter, real `index.ts` with `McpServer`).
 
 ---
 

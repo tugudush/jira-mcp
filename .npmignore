@@ -1,0 +1,38 @@
+# source and config files
+src/
+tests/
+scripts/
+docs/
+.github/
+.husky/
+
+# configs
+.eslintrc*
+eslint.config.*
+.prettierrc*
+.prettierignore
+tsconfig.json
+vitest.config.ts
+.lintstagedrc*
+package-lock.json
+
+# test artifacts
+coverage/
+*.log
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+*.tsbuildinfo
+
+# development files
+.env
+.env.local
+.env.*.local
+plan.md
+competitors.md
+
+# generated file (we ship dist/ instead, which contains the compiled output)
+src/generated/
