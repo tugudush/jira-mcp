@@ -4,7 +4,7 @@ A focused, **Jira-only** Model Context Protocol (MCP) server with bitbucket-mcp-
 
 🎯 **43 tools** across **10 categories** (35 read + 8 opt-in write) · ✅ Read-only by default · 🏗️ Modern TS 6 + ESM · 📦 TOON / JSON / text output formats
 
-> **Status**: 🚧 v1.0 in development — see [plan.md](plan.md) for the full roadmap and [competitors.md](competitors.md) for the research that informed it.
+> **Status**: 🚧 v1.0 in development — see [docs/plan.md](docs/plan.md) for the full roadmap and [competitors.md](competitors.md) for the research that informed it.
 
 ---
 
@@ -116,7 +116,7 @@ No secrets are ever logged. `JIRA_DEBUG=true` only logs URLs and status codes.
 
 ---
 
-## Features (planned for v1.0 — see [plan.md](plan.md) §6 for the full list)
+## Features (planned for v1.0 — see [docs/plan.md](docs/plan.md) §6 for the full list)
 
 - **Issue search** with JQL via the new `/search/jql` endpoint (POST)
 - **Project** listing, components, versions, statuses
@@ -133,7 +133,7 @@ No secrets are ever logged. `JIRA_DEBUG=true` only logs URLs and status codes.
 
 ## Development
 
-See [plan.md](plan.md) for the full phased implementation plan.
+See [docs/plan.md](docs/plan.md) for the full phased implementation plan.
 
 ```bash
 git clone https://github.com/tugudush/jira-mcp.git
