@@ -18,20 +18,9 @@ The official [Atlassian MCP (Rovo)](https://support.atlassian.com/atlassian-rovo
 
 - Node.js ≥ 20.0.0 (see `.nvmrc`)
 - A Jira Cloud site (e.g. `https://your-domain.atlassian.net`)
-- An API token — create one at <https://id.atlassian.com/manage-profile/security/api-tokens>:
-  - **Important:** Choose **"Create API token with scopes"** (highly recommended over classic unscoped tokens for security) and select **Jira** as the app.
-  - **Required Read Scopes (for read-only installs):**
-    - `read:board-scope:jira-software`, `read:sprint:jira-software` (for boards, backlog, and sprint tools)
-    - `read:issue:jira`, `read:issue-details:jira` (for reading and searching issues)
-    - `read:comment:jira` (for viewing comments)
-    - `read:field:jira` (for retrieving custom fields and system fields)
-    - `read:project:jira` (for listing and retrieving projects)
-    - `read:user:jira`, `read:jira-user` (for user search and assignee details)
-    - `read:jira-work` (for general issue activity, worklogs, and saved filters)
-  - **Required Write Scopes (additional if `JIRA_ALLOW_WRITES=true` is enabled):**
-    - `write:issue:jira` (for creating, updating, assigning, and transitioning issues)
-    - `write:comment:jira` (for adding, updating, and deleting comments)
-    - `write:issue-worklog:jira` (for logging time/worklogs)
+- An API token is required. Create a classic (unscoped) API token at <https://id.atlassian.com/manage-profile/security/api-tokens>:
+  - **Important:** Click **"Create API token"** (do NOT use "Create API token with scopes", as scoped tokens can fail to authorize various Jira platform endpoints correctly).
+  - Make sure your Atlassian account has active read/write permissions for the target Jira project.
 
 ---
 

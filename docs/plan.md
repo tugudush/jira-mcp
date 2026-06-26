@@ -191,10 +191,7 @@ JIRA_REQUEST_TIMEOUT_MS = 30000   (optional, default 30000 — per-request timeo
 ```
 
 - HTTP basic auth header: `Authorization: Basic base64(email:api_token)`.
-- Token scopes: when creating the API token, choose **"Create API token with scopes"** and select **Jira** as the app.
-  For read-only installs, select all necessary `read:...` scopes (like `read:issue:jira`, `read:comment:jira`, `read:project:jira`, `read:user:jira`, `read:board-scope:jira-software`, etc.).
-  For installs that opt into writes, also select the necessary `write:...` scopes (like `write:issue:jira` and `write:comment:jira`).
-  Classic unscoped tokens also work but the scoped variant is recommended.
+- Token scopes: Create a classic (unscoped) API token by selecting **"Create API token"** (do NOT use "Create API token with scopes", as scoped tokens can fail to authorize various Jira platform endpoints correctly).
 - All requests go to `JIRA_BASE_URL/rest/api/3/...` (core) or
   `JIRA_BASE_URL/rest/agile/1.0/...` (agile).
 - No secrets are logged. `JIRA_DEBUG=true` only logs URLs + status codes.

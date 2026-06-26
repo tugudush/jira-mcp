@@ -137,30 +137,42 @@ function formatSearchResultIssue(issue: IssueData): string {
  */
 export async function handleSearchIssues(args: {
   jql?: string
-  startAt?: number
+  nextPageToken?: string
   maxResults?: number
   fields?: string[]
   expand?: string
 }): Promise<{ text: string; data: unknown }> {
-  const url = buildApiUrl('/rest/api/3/search')
+  const url = buildApiUrl('/rest/api/3/search/jql')
 
   const payload = {
     jql: args.jql || '',
-    startAt: args.startAt ?? 0,
+    nextPageToken: args.nextPageToken,
     maxResults: args.maxResults ?? 50,
     fields: args.fields || ['*navigable'],
-    expand: args.expand ? args.expand.split(',') : undefined,
+    expand: args.expand,
   }
 
-  const data = await makeRequest<PaginatedResponse<IssueData>>(url, {
+  interface JqlResponse {
+    issues?: IssueData[]
+    nextPageToken?: string
+    isLast?: boolean
+  }
+
+  const data = await makeRequest<JqlResponse>(url, {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 
-  const total = data.total ?? 0
   const issues = data.issues || []
+  const isLast = data.isLast ?? true
+  const nextToken = data.nextPageToken ?? ''
 
-  let text = `Search Issues Results (JQL: "${payload.jql}", total: ${total}):\n`
+  let text = `Search Issues Results (JQL: "${payload.jql}", count: ${issues.length}, isLast: ${isLast}`
+  if (nextToken) {
+    text += `, nextPageToken: "${nextToken}"`
+  }
+  text += '):\n'
+
   if (issues.length === 0) {
     text += 'No issues found matching query.'
   } else {
@@ -188,26 +200,39 @@ function formatSearchResultIssueSimple(issue: IssueData): string {
  */
 export async function handleSearchJql(args: {
   jql?: string
-  startAt?: number
+  nextPageToken?: string
   maxResults?: number
   fields?: string[]
   expand?: string
 }): Promise<{ text: string; data: unknown }> {
   const params: Record<string, unknown> = {
     jql: args.jql || '',
-    startAt: args.startAt ?? 0,
+    nextPageToken: args.nextPageToken,
     maxResults: args.maxResults ?? 50,
     fields: args.fields ? args.fields.join(',') : '*navigable',
     expand: args.expand,
   }
 
-  const url = addQueryParams(buildApiUrl('/rest/api/3/search'), params)
-  const data = await makeRequest<PaginatedResponse<IssueData>>(url)
+  const url = addQueryParams(buildApiUrl('/rest/api/3/search/jql'), params)
 
-  const total = data.total ?? 0
+  interface JqlResponse {
+    issues?: IssueData[]
+    nextPageToken?: string
+    isLast?: boolean
+  }
+
+  const data = await makeRequest<JqlResponse>(url)
+
   const issues = data.issues || []
+  const isLast = data.isLast ?? true
+  const nextToken = data.nextPageToken ?? ''
 
-  let text = `Search Issues Results (GET, total: ${total}):\n`
+  let text = `Search Issues Results (GET, count: ${issues.length}, isLast: ${isLast}`
+  if (nextToken) {
+    text += `, nextPageToken: "${nextToken}"`
+  }
+  text += '):\n'
+
   if (issues.length === 0) {
     text += 'No issues found.'
   } else {

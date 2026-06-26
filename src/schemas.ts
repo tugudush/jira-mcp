@@ -43,11 +43,11 @@ export const SearchIssuesSchema = withOutputOptions(
       .describe(
         'The JQL (Jira Query Language) string. E.g., \'project = PROJ AND status = "In Progress"\''
       ),
-    startAt: z
-      .number()
+    nextPageToken: z
+      .string()
       .optional()
       .describe(
-        'The index of the first item to return in a page of results (0-based)'
+        'The page token to fetch the next page of results (cursor-based pagination)'
       ),
     maxResults: z
       .number()

@@ -226,7 +226,7 @@ async function runServer() {
     {
       title: 'Search Jira issues (POST)',
       description:
-        'Search Jira issues using JQL via POST request. Uses `/rest/api/3/search` (POST), which is ideal for long JQL queries or when requesting specific large lists of fields.',
+        'Search Jira issues using JQL via POST request. Uses `/rest/api/3/search/jql` (POST), which is ideal for long JQL queries or when requesting specific large lists of fields.',
       inputSchema: SearchIssuesSchema,
     },
     executeHandler(handleSearchIssues)
@@ -237,7 +237,7 @@ async function runServer() {
     {
       title: 'Search Jira issues (GET)',
       description:
-        'Search Jira issues using JQL via GET request. Uses GET `/rest/api/3/search`. Note: GET requests can have URI length limits, so for very large queries, use the POST-based `jira_search_issues` tool.',
+        'Search Jira issues using JQL via GET request. Uses GET `/rest/api/3/search/jql`. Note: GET requests can have URI length limits, so for very large queries, use the POST-based `jira_search_issues` tool.',
       inputSchema: SearchIssuesSchema,
     },
     executeHandler(handleSearchJql)
