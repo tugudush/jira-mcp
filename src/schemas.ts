@@ -563,3 +563,78 @@ export const GetCreateMetaSchema = withOutputOptions(
       .describe('The maximum number of items to return per page'),
   })
 )
+
+/**
+ * Schema for jira_list_dashboards
+ */
+export const ListDashboardsSchema = withOutputOptions(
+  z.object({
+    startAt: z
+      .number()
+      .optional()
+      .describe('The index of the first item to return (0-based)'),
+    maxResults: z
+      .number()
+      .optional()
+      .describe('The maximum number of items to return'),
+    filter: z
+      .string()
+      .optional()
+      .describe('Filter dashboards by name (substring match)'),
+  })
+)
+
+/**
+ * Schema for jira_get_dashboard
+ */
+export const GetDashboardSchema = withOutputOptions(
+  z.object({
+    dashboardId: z
+      .string()
+      .describe(
+        "The ID of the dashboard. Note: Jira dashboard IDs are strings like '10100'"
+      ),
+  })
+)
+
+/**
+ * Schema for jira_list_statuses
+ */
+export const ListStatusesSchema = withOutputOptions(z.object({}))
+
+/**
+ * Schema for jira_list_workflows
+ */
+export const ListWorkflowsSchema = withOutputOptions(
+  z.object({
+    startAt: z
+      .number()
+      .optional()
+      .describe('The index of the first item to return (0-based)'),
+    maxResults: z
+      .number()
+      .optional()
+      .describe('The maximum number of items to return'),
+    workflowName: z
+      .string()
+      .optional()
+      .describe('Filter workflows by name (case-insensitive substring match)'),
+    expand: z
+      .string()
+      .optional()
+      .describe('Extra details to expand, e.g. "transitions", "statuses"'),
+  })
+)
+
+/**
+ * Schema for jira_get_issue_links
+ */
+export const GetIssueLinksSchema = withOutputOptions(
+  z.object({
+    issueIdOrKey: z
+      .string()
+      .describe(
+        "The complete key (e.g., 'PROJ-123') or the numerical ID of the issue"
+      ),
+  })
+)

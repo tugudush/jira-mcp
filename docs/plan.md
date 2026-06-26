@@ -5,7 +5,8 @@
 > ✅ **Phase 1** done (core infrastructure, config, errors, api with retry/timeout, formatters/filters, bootstrapped standard server and smoke tool)
 > ✅ **Phase 2** done (Issues & Projects: 8 issue tools, 5 project tools, full schemas and unit/mocked testing)
 > ✅ **Phase 3** done (Agile, Users, Filters, Fields: 7 board/sprint tools, 4 user tools, 3 filter tools, 3 field tools)
-> ⏭️ **Phase 4** next — Dashboards, Workflows, Links, Watchers (2 dashboard tools, 2 workflow tools, 1 link tool, 1 watcher tool)
+> ✅ **Phase 4** done (Dashboards, Workflows, Links, Watchers: 2 dashboard tools, 2 workflow tools, 1 link tool, 1 watcher tool; `jira_get_issue_watchers` refactored out of `issue.ts`)
+> ⏭️ **Phase 5** next — Write Operations, opt-in (`makeWriteRequest` + 8 write tools gated by `JIRA_ALLOW_WRITES`)
 > See [Progress Log](#progress-log) for the running record and §9 for the full phased plan.
 
 ---
@@ -553,11 +554,11 @@ into the consumer repo and how the model picks it up automatically.
 
 ### Phase 4 — Dashboards, Workflows, Links, Watchers (1 day)
 
-- [ ] `handlers/dashboard.ts` — 2 tools
-- [ ] `handlers/workflow.ts` — 2 tools
-- [ ] `handlers/link.ts` — 1 tool
-- [ ] `handlers/watcher.ts` — 1 tool
-- [ ] Unit + integration tests
+- [x] `handlers/dashboard.ts` — 2 tools
+- [x] `handlers/workflow.ts` — 2 tools
+- [x] `handlers/link.ts` — 1 tool
+- [x] `handlers/watcher.ts` — 1 tool (`jira_get_issue_watchers` moved out of `issue.ts`)
+- [x] Unit + integration tests
 
 ### Phase 5 — Write Operations, opt-in (1 day)
 
@@ -796,6 +797,54 @@ cc99187 (HEAD -> feature/phase-01, origin/feature/phase-01) feat: implement Phas
 - **Param mapping for third-party REST APIs:** API parameters (such as `ownerAccountId`) are frequently renamed in external queries (`owner`). Always ensure parameters conform to exact external API layouts cleanly.
 
 **Next**: Phase 4 — Dashboards, Workflows, Links, Watchers (`handlers/dashboard.ts` for 2 dashboard tools, etc.).
+
+### ✅ Phase 4 — Dashboards, Workflows, Links, Watchers — _completed 2026-06-27_
+
+**What landed** (10 files added/updated, ~900 lines)
+
+- `src/handlers/dashboard.ts` — Implemented both dashboard tools (`jira_list_dashboards`, `jira_get_dashboard`) including gadgets rendering. Helpers `getOwnerLine` and `getPublicBadge` keep complexity low; `formatGadgets` extracted to remove a `no-useless-assignment` lint warning.
+- `src/handlers/workflow.ts` — Implemented both workflow tools (`jira_list_statuses`, `jira_list_workflows`) with optional `workflowName` and `expand` query params. `getCategoryLine` isolates branch-heavy category rendering.
+- `src/handlers/link.ts` — Implemented `jira_get_issue_links`. Jira Cloud does not expose a dedicated issue-links endpoint, so the handler fetches the issue with `?fields=issuelinks` and projects both `outwardIssue` and `inwardIssue` directions. `buildLinkLine` split into 5 helpers (`getDirectionConfig`, `resolveRelation`, `resolveKey`, etc.) to keep complexity ≤ 10.
+- `src/handlers/watcher.ts` — **Refactored** `handleGetIssueWatchers` out of `src/handlers/issue.ts` into a dedicated single-responsibility file matching the planned `watcher.ts` layout. Behavior is unchanged; the tool name and API endpoint stay identical.
+- `src/handlers/issue.ts` — Removed watcher interfaces, helpers, and handler (moved cleanly to `watcher.ts`). `convertAdfToText` retained because it is still used by comments and worklogs.
+- `src/schemas.ts` — Appended `ListDashboardsSchema`, `GetDashboardSchema`, `ListStatusesSchema`, `ListWorkflowsSchema`, `GetIssueLinksSchema` (all wired through `withOutputOptions`).
+- `src/index.ts` — Removed the inline `jira_get_issue_watchers` registration under the Issues section; added four new sections at the bottom (Dashboards / Workflows & Statuses / Issue Links / Watchers) and imported the new handlers and schemas.
+- `tests/handlers/dashboard.test.ts` — New: covers list + get + empty/no-gadgets cases.
+- `tests/handlers/workflow.test.ts` — New: covers statuses with categories, empty states, workflow list with default badge.
+- `tests/handlers/link.test.ts` — New: covers outward + inward rendering, empty state, missing fields, fallback to link type name, fallback to ID when key is missing.
+- `tests/handlers/watcher.test.ts` — New: contains the watcher test extracted from `issue.test.ts`, plus coverage for the no-watchers and missing-optional-fields branches.
+- `tests/handlers/issue.test.ts` — Removed the watcher import and the `handleGetIssueWatchers` describe block; no remaining functional coverage was affected.
+
+**Verification — all green**
+
+| Command                | Result                                                                                 |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `npm run lint`         | clean (max-warnings 0, complexity ≤ 10 verified)                                       |
+| `npm run type-check`   | clean (TS 6, strict, NodeNext)                                                         |
+| `npm test`             | 92/92 passed (Vitest 4.1.9, 16 test files, +15 tests vs Phase 3)                       |
+| `npm run format:check` | clean Prettier status                                                                  |
+| `npm run build`        | clean typescript build outputs to `dist/handlers/{dashboard,link,watcher,workflow}.js` |
+| `npm run ltfb`         | lint → type-check → format → prebuild → build, all clean                               |
+
+**Drift from plan §9 (committed in this phase)**
+
+1. **`handlers/watcher.ts` semantics.** The plan §5.9 lists `jira_get_issue_links` but does not list a dedicated `jira_get_issue_watchers` tool (it was originally inside `issue.ts` per §5.1). To match the planned file layout in §9, the watcher handler was **moved** from `issue.ts` into a new `watcher.ts` file. No API or tool name change — `jira_get_issue_watchers` still works identically from the consumer's perspective.
+2. **`jira_get_issue_links` is a read of an issue, not a dedicated links endpoint.** The Atlassian Jira Cloud REST API v3 does **not** expose `GET /rest/api/3/issue/{key}/links`. The convention is to read the `issuelinks` field from the issue resource (`?fields=issuelinks`). The tool description in `index.ts` calls this out so the model doesn't retry the missing endpoint.
+
+**Lessons learned** (kept for Phase 5+ contributors)
+
+- **Per-handler-file layout pays off for refactors.** Moving `handleGetIssueWatchers` from `issue.ts` to `watcher.ts` was a single-file move with zero behavior change. Future watcher _write_ tools (e.g. `jira_add_watcher`, `jira_remove_watcher`) will land in `watcher.ts` next to the read tool.
+- **`no-useless-assignment` triggers on `let X = ''; X += ...`.** ESLint flags this even when the value _is_ used downstream via `+=` because it can't always tell. Prefer computing the final string in a helper and assigning once.
+- **`buildLinkLine` complexity 20 → 12 → 8.** Splitting a function into 4 helpers (`getDirectionConfig`, `resolveRelation`, `resolveKey`, `getLinkTarget`) kept each branch-light function at ≤ 4 complexity. This is the same extraction pattern we used in Phase 3 for status/property extractors.
+- **Jira's `fields=issuelinks` covers both directions.** When rendering, use the `type.outward` / `type.inward` strings as the relation label, falling back to `type.name`, then to `'related'`. Don't rely on the type name alone — many Jira admins configure directional labels (e.g. _blocks_ / _is blocked by_) that read more naturally.
+
+**Repository state after Phase 4**
+
+```text
+$ git status
+On branch feature/phase-04
+nothing to commit, working tree clean
+```
 
 ---
 
