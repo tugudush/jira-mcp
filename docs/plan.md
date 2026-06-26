@@ -733,8 +733,12 @@ nothing to commit, working tree clean
 ```text
 $ git status
 On branch feature/phase-01
-Changes to be committed:
-  (Ready for commit)
+nothing to commit, working tree clean
+
+$ git log --oneline
+cc99187 (HEAD -> feature/phase-01, origin/feature/phase-01) feat: implement Phase 1 - core infrastructure
+752f58d chore: scaffold jira-mcp v0.1.0 (Phase 0)
+4452a07 initial commit
 ```
 
 **Next**: Phase 2 — Issues & Projects (`handlers/issue.ts` for 8 issue tools, `handlers/project.ts` for 5 project tools, schemas, unit and integration sandbox test sweeps). ETA per plan: 2 days.
