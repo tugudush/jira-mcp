@@ -18,9 +18,9 @@ The official [Atlassian MCP (Rovo)](https://support.atlassian.com/atlassian-rovo
 
 - Node.js ≥ 20.0.0 (see `.nvmrc`)
 - A Jira Cloud site (e.g. `https://your-domain.atlassian.net`)
-- An API token — create one at <https://id.atlassian.com/manage-profile/security/api-tokens>:
-  - For read-only installs, select **Jira → Read**.
-  - For installs with `JIRA_ALLOW_WRITES=true`, select **Jira → Read & Write**.
+- An API token is required. Create a classic (unscoped) API token at <https://id.atlassian.com/manage-profile/security/api-tokens>:
+  - **Important:** Click **"Create API token"** (do NOT use "Create API token with scopes", as scoped tokens can fail to authorize various Jira platform endpoints correctly).
+  - Make sure your Atlassian account has active read/write permissions for the target Jira project.
 
 ---
 

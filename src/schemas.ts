@@ -43,11 +43,11 @@ export const SearchIssuesSchema = withOutputOptions(
       .describe(
         'The JQL (Jira Query Language) string. E.g., \'project = PROJ AND status = "In Progress"\''
       ),
-    startAt: z
-      .number()
+    nextPageToken: z
+      .string()
       .optional()
       .describe(
-        'The index of the first item to return in a page of results (0-based)'
+        'The page token to fetch the next page of results (cursor-based pagination)'
       ),
     maxResults: z
       .number()
@@ -255,5 +255,311 @@ export const GetProjectStatusesSchema = withOutputOptions(
     projectIdOrKey: z
       .string()
       .describe("The key (e.g., 'PROJ') or the numerical ID of the project"),
+  })
+)
+
+/**
+ * Schema for jira_list_boards
+ */
+export const ListBoardsSchema = withOutputOptions(
+  z.object({
+    startAt: z
+      .number()
+      .optional()
+      .describe('The index of the first item to return (0-based)'),
+    maxResults: z
+      .number()
+      .optional()
+      .describe('The maximum number of items to return'),
+    type: z
+      .string()
+      .optional()
+      .describe('Filter boards by type (e.g., "scrum", "kanban")'),
+    name: z
+      .string()
+      .optional()
+      .describe('Filter boards by name (case-insensitive substring match)'),
+    projectKeyOrId: z
+      .string()
+      .optional()
+      .describe('Filter boards by project key or ID'),
+  })
+)
+
+/**
+ * Schema for jira_get_board
+ */
+export const GetBoardSchema = withOutputOptions(
+  z.object({
+    boardId: z.number().describe('The ID of the board'),
+  })
+)
+
+/**
+ * Schema for jira_get_board_issues
+ */
+export const GetBoardIssuesSchema = withOutputOptions(
+  z.object({
+    boardId: z.number().describe('The ID of the board'),
+    startAt: z
+      .number()
+      .optional()
+      .describe('The index of the first item to return (0-based)'),
+    maxResults: z
+      .number()
+      .optional()
+      .describe('The maximum number of items to return'),
+    jql: z.string().optional().describe('Filter issues using a JQL string'),
+    fields: z
+      .array(z.string())
+      .optional()
+      .describe('Fields to return for each issue'),
+    expand: z.string().optional().describe('Extra details to expand'),
+  })
+)
+
+/**
+ * Schema for jira_get_board_sprints
+ */
+export const GetBoardSprintsSchema = withOutputOptions(
+  z.object({
+    boardId: z.number().describe('The ID of the board'),
+    startAt: z
+      .number()
+      .optional()
+      .describe('The index of the first item to return (0-based)'),
+    maxResults: z
+      .number()
+      .optional()
+      .describe('The maximum number of items to return'),
+    state: z
+      .string()
+      .optional()
+      .describe(
+        'Filter sprints by state: "future", "active", or "closed" (comma-separated is supported too)'
+      ),
+  })
+)
+
+/**
+ * Schema for jira_get_sprint
+ */
+export const GetSprintSchema = withOutputOptions(
+  z.object({
+    sprintId: z.number().describe('The ID of the sprint'),
+  })
+)
+
+/**
+ * Schema for jira_get_sprint_issues
+ */
+export const GetSprintIssuesSchema = withOutputOptions(
+  z.object({
+    sprintId: z.number().describe('The ID of the sprint'),
+    startAt: z
+      .number()
+      .optional()
+      .describe('The index of the first item to return (0-based)'),
+    maxResults: z
+      .number()
+      .optional()
+      .describe('The maximum number of items to return'),
+    jql: z.string().optional().describe('Filter issues using a JQL string'),
+    fields: z
+      .array(z.string())
+      .optional()
+      .describe('Fields to return for each issue'),
+    expand: z.string().optional().describe('Extra details to expand'),
+  })
+)
+
+/**
+ * Schema for jira_get_backlog_issues
+ */
+export const GetBacklogIssuesSchema = withOutputOptions(
+  z.object({
+    boardId: z.number().describe('The ID of the board'),
+    startAt: z
+      .number()
+      .optional()
+      .describe('The index of the first item to return (0-based)'),
+    maxResults: z
+      .number()
+      .optional()
+      .describe('The maximum number of items to return'),
+    jql: z.string().optional().describe('Filter issues using a JQL string'),
+    fields: z
+      .array(z.string())
+      .optional()
+      .describe('Fields to return for each issue'),
+    expand: z.string().optional().describe('Extra details to expand'),
+  })
+)
+
+/**
+ * Schema for jira_get_user
+ */
+export const GetUserSchema = withOutputOptions(
+  z.object({
+    accountId: z.string().describe('The unique account ID of the user'),
+  })
+)
+
+/**
+ * Schema for jira_search_users
+ */
+export const SearchUsersSchema = withOutputOptions(
+  z.object({
+    query: z
+      .string()
+      .describe('Prefix of the user name, display name or email address'),
+    startAt: z
+      .number()
+      .optional()
+      .describe('The index of the first item to return (0-based)'),
+    maxResults: z
+      .number()
+      .optional()
+      .describe('The maximum number of items to return'),
+  })
+)
+
+/**
+ * Schema for jira_get_assignable_users
+ */
+export const GetAssignableUsersSchema = withOutputOptions(
+  z.object({
+    query: z
+      .string()
+      .optional()
+      .describe('Prefix of the user name, display name or email address'),
+    projectKey: z
+      .string()
+      .optional()
+      .describe(
+        'The project key (e.g. "PROJ") (at least projectKey or issueKey is required)'
+      ),
+    issueKey: z
+      .string()
+      .optional()
+      .describe(
+        'The issue key (e.g. "PROJ-123") (at least projectKey or issueKey is required)'
+      ),
+    startAt: z
+      .number()
+      .optional()
+      .describe('The index of the first item to return (0-based)'),
+    maxResults: z
+      .number()
+      .optional()
+      .describe('The maximum number of items to return'),
+  })
+)
+
+/**
+ * Schema for jira_list_filters
+ */
+export const ListFiltersSchema = withOutputOptions(
+  z.object({
+    filterName: z.string().optional().describe('Prefix of the filter name'),
+    accountId: z
+      .string()
+      .optional()
+      .describe('The account ID of the user who shared the filter'),
+    ownerAccountId: z
+      .string()
+      .optional()
+      .describe('The account ID of the user who owns the filter'),
+    orderBy: z
+      .string()
+      .optional()
+      .describe(
+        'Order results by: "id", "-id", "name", "-name", "description", "-description", "isFavorite", "-isFavorite"'
+      ),
+    startAt: z
+      .number()
+      .optional()
+      .describe('The index of the first item to return (0-based)'),
+    maxResults: z
+      .number()
+      .optional()
+      .describe('The maximum number of items to return'),
+    expand: z
+      .string()
+      .optional()
+      .describe('Extra details to expand, e.g. "sharedUsers", "subscriptions"'),
+  })
+)
+
+/**
+ * Schema for jira_get_filter
+ */
+export const GetFilterSchema = withOutputOptions(
+  z.object({
+    id: z.number().describe('The ID of the filter'),
+    expand: z
+      .string()
+      .optional()
+      .describe('Extra details to expand, e.g. "sharedUsers", "subscriptions"'),
+  })
+)
+
+/**
+ * Schema for jira_get_favorite_filters
+ */
+export const GetFavoriteFiltersSchema = withOutputOptions(
+  z.object({
+    expand: z
+      .string()
+      .optional()
+      .describe('Extra details to expand, e.g. "sharedUsers", "subscriptions"'),
+  })
+)
+
+/**
+ * Schema for jira_list_fields
+ */
+export const ListFieldsSchema = withOutputOptions(z.object({}))
+
+/**
+ * Schema for jira_list_issue_types
+ */
+export const ListIssueTypesSchema = withOutputOptions(z.object({}))
+
+/**
+ * Schema for jira_get_create_meta
+ */
+export const GetCreateMetaSchema = withOutputOptions(
+  z.object({
+    projectIds: z
+      .array(z.string())
+      .optional()
+      .describe('List of project IDs to filter metadata'),
+    projectKeys: z
+      .array(z.string())
+      .optional()
+      .describe('List of project keys to filter metadata'),
+    issueTypeIds: z
+      .array(z.string())
+      .optional()
+      .describe('List of issue type IDs to filter metadata'),
+    issueTypeNames: z
+      .array(z.string())
+      .optional()
+      .describe('List of issue type names to filter metadata'),
+    expand: z
+      .string()
+      .optional()
+      .describe('Details to expand, e.g. "projects.issuetypes.fields"'),
+    startAt: z
+      .number()
+      .optional()
+      .describe(
+        'The index of the first item to return (0-based) for pagination'
+      ),
+    maxResults: z
+      .number()
+      .optional()
+      .describe('The maximum number of items to return per page'),
   })
 )

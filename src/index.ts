@@ -10,7 +10,31 @@ import { fileURLToPath } from 'url'
 import path from 'path'
 
 import { initializeConfig, loadConfig } from './config.js'
-import { handleGetCurrentUser } from './handlers/user.js'
+import {
+  handleGetCurrentUser,
+  handleGetUser,
+  handleSearchUsers,
+  handleGetAssignableUsers,
+} from './handlers/user.js'
+import {
+  handleListBoards,
+  handleGetBoard,
+  handleGetBoardIssues,
+  handleGetBoardSprints,
+  handleGetSprint,
+  handleGetSprintIssues,
+  handleGetBacklogIssues,
+} from './handlers/agile.js'
+import {
+  handleListFilters,
+  handleGetFilter,
+  handleGetFavoriteFilters,
+} from './handlers/filter.js'
+import {
+  handleListFields,
+  handleListIssueTypes,
+  handleGetCreateMeta,
+} from './handlers/field.js'
 import {
   GetCurrentUserSchema,
   SearchIssuesSchema,
@@ -25,6 +49,22 @@ import {
   GetProjectComponentsSchema,
   GetProjectVersionsSchema,
   GetProjectStatusesSchema,
+  ListBoardsSchema,
+  GetBoardSchema,
+  GetBoardIssuesSchema,
+  GetBoardSprintsSchema,
+  GetSprintSchema,
+  GetSprintIssuesSchema,
+  GetBacklogIssuesSchema,
+  GetUserSchema,
+  SearchUsersSchema,
+  GetAssignableUsersSchema,
+  ListFiltersSchema,
+  GetFilterSchema,
+  GetFavoriteFiltersSchema,
+  ListFieldsSchema,
+  ListIssueTypesSchema,
+  GetCreateMetaSchema,
 } from './schemas.js'
 import {
   handleSearchIssues,
@@ -186,7 +226,7 @@ async function runServer() {
     {
       title: 'Search Jira issues (POST)',
       description:
-        'Search Jira issues using JQL via POST request. Uses `/rest/api/3/search` (POST), which is ideal for long JQL queries or when requesting specific large lists of fields.',
+        'Search Jira issues using JQL via POST request. Uses `/rest/api/3/search/jql` (POST), which is ideal for long JQL queries or when requesting specific large lists of fields.',
       inputSchema: SearchIssuesSchema,
     },
     executeHandler(handleSearchIssues)
@@ -197,7 +237,7 @@ async function runServer() {
     {
       title: 'Search Jira issues (GET)',
       description:
-        'Search Jira issues using JQL via GET request. Uses GET `/rest/api/3/search`. Note: GET requests can have URI length limits, so for very large queries, use the POST-based `jira_search_issues` tool.',
+        'Search Jira issues using JQL via GET request. Uses GET `/rest/api/3/search/jql`. Note: GET requests can have URI length limits, so for very large queries, use the POST-based `jira_search_issues` tool.',
       inputSchema: SearchIssuesSchema,
     },
     executeHandler(handleSearchJql)
@@ -324,6 +364,190 @@ async function runServer() {
       inputSchema: GetProjectStatusesSchema,
     },
     executeHandler(handleGetProjectStatuses)
+  )
+
+  // --- Agile — Boards & Sprints (7) ---
+
+  server.registerTool(
+    'jira_list_boards',
+    {
+      title: 'List Agile boards',
+      description:
+        'List all agile boards (scrum/kanban). Uses GET `/rest/agile/1.0/board`.',
+      inputSchema: ListBoardsSchema,
+    },
+    executeHandler(handleListBoards)
+  )
+
+  server.registerTool(
+    'jira_get_board',
+    {
+      title: 'Get Agile board details',
+      description:
+        'Get details of a specific agile board. Uses GET `/rest/agile/1.0/board/{boardId}`.',
+      inputSchema: GetBoardSchema,
+    },
+    executeHandler(handleGetBoard)
+  )
+
+  server.registerTool(
+    'jira_get_board_issues',
+    {
+      title: 'Get Board issues',
+      description:
+        'Retrieve issues associated with an agile board. Uses GET `/rest/agile/1.0/board/{boardId}/issue`. Supports filtering by JQL, fields list and expand.',
+      inputSchema: GetBoardIssuesSchema,
+    },
+    executeHandler(handleGetBoardIssues)
+  )
+
+  server.registerTool(
+    'jira_get_board_sprints',
+    {
+      title: 'Get Board sprints',
+      description:
+        'Retrieve sprints assigned to an agile board. Uses GET `/rest/agile/1.0/board/{boardId}/sprint`. Supports filtering by state (active, future, closed).',
+      inputSchema: GetBoardSprintsSchema,
+    },
+    executeHandler(handleGetBoardSprints)
+  )
+
+  server.registerTool(
+    'jira_get_sprint',
+    {
+      title: 'Get Agile sprint details',
+      description:
+        'Get details of a specific sprint. Uses GET `/rest/agile/1.0/sprint/{sprintId}`.',
+      inputSchema: GetSprintSchema,
+    },
+    executeHandler(handleGetSprint)
+  )
+
+  server.registerTool(
+    'jira_get_sprint_issues',
+    {
+      title: 'Get Sprint issues',
+      description:
+        'Retrieve issues assigned to a sprint. Uses GET `/rest/agile/1.0/sprint/{sprintId}/issue`. Supports filtering by JQL, fields list and expand.',
+      inputSchema: GetSprintIssuesSchema,
+    },
+    executeHandler(handleGetSprintIssues)
+  )
+
+  server.registerTool(
+    'jira_get_backlog_issues',
+    {
+      title: 'Get Board backlog issues',
+      description:
+        'Retrieve backlog issues for a board. Uses GET `/rest/agile/1.0/board/{boardId}/backlog`. Supports filtering by JQL, fields list and expand.',
+      inputSchema: GetBacklogIssuesSchema,
+    },
+    executeHandler(handleGetBacklogIssues)
+  )
+
+  // --- Users (3 new + 1 existing) ---
+
+  server.registerTool(
+    'jira_get_user',
+    {
+      title: 'Get User details by ID',
+      description:
+        'Retrieve details of a user by their unique account ID. Uses GET `/rest/api/3/user`.',
+      inputSchema: GetUserSchema,
+    },
+    executeHandler(handleGetUser)
+  )
+
+  server.registerTool(
+    'jira_search_users',
+    {
+      title: 'Search Users',
+      description:
+        'Search Jira users by query string matching name/display name/email. Uses GET `/rest/api/3/user/search`.',
+      inputSchema: SearchUsersSchema,
+    },
+    executeHandler(handleSearchUsers)
+  )
+
+  server.registerTool(
+    'jira_get_assignable_users',
+    {
+      title: 'Get Assignable Users',
+      description:
+        'Get users assignable to a project or issue. Uses GET `/rest/api/3/user/assignable/search`.',
+      inputSchema: GetAssignableUsersSchema,
+    },
+    executeHandler(handleGetAssignableUsers)
+  )
+
+  // --- Filters (3) ---
+
+  server.registerTool(
+    'jira_list_filters',
+    {
+      title: 'List/Search Saved Filters',
+      description:
+        'Search or list saved JQL filters. Uses GET `/rest/api/3/filter/search`.',
+      inputSchema: ListFiltersSchema,
+    },
+    executeHandler(handleListFilters)
+  )
+
+  server.registerTool(
+    'jira_get_filter',
+    {
+      title: 'Get Filter details',
+      description:
+        'Retrieve details of a saved filter by ID. Uses GET `/rest/api/3/filter/{id}`.',
+      inputSchema: GetFilterSchema,
+    },
+    executeHandler(handleGetFilter)
+  )
+
+  server.registerTool(
+    'jira_get_favorite_filters',
+    {
+      title: 'Get Favorite Filters',
+      description:
+        'Retrieve favorite filters of the current user. Uses GET `/rest/api/3/filter/favourite`.',
+      inputSchema: GetFavoriteFiltersSchema,
+    },
+    executeHandler(handleGetFavoriteFilters)
+  )
+
+  // --- Fields & Issue Types (3) ---
+
+  server.registerTool(
+    'jira_list_fields',
+    {
+      title: 'List Jira Fields',
+      description:
+        'List all custom and system fields in the Jira instance. Uses GET `/rest/api/3/field`.',
+      inputSchema: ListFieldsSchema,
+    },
+    executeHandler(handleListFields)
+  )
+
+  server.registerTool(
+    'jira_list_issue_types',
+    {
+      title: 'List Issue Types',
+      description:
+        'List all issue types in the Jira instance. Uses GET `/rest/api/3/issuetype`.',
+      inputSchema: ListIssueTypesSchema,
+    },
+    executeHandler(handleListIssueTypes)
+  )
+
+  server.registerTool(
+    'jira_get_create_meta',
+    {
+      title: 'Get Issue Create Metadata',
+      description:
+        'Retrieve metadata (createmeta) required for creating issues. Uses GET `/rest/api/3/issue/createmeta`.',
+      inputSchema: GetCreateMetaSchema,
+    },
+    executeHandler(handleGetCreateMeta)
   )
 
   const transport = new StdioServerTransport()

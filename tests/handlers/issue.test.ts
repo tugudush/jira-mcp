@@ -62,7 +62,7 @@ describe('issue handlers unit tests', () => {
   describe('handleSearchIssues', () => {
     it('returns formatted results', async () => {
       mockMakeRequest.mockResolvedValueOnce({
-        total: 2,
+        isLast: true,
         issues: [
           {
             key: 'PROJ-1',
@@ -98,7 +98,7 @@ describe('issue handlers unit tests', () => {
     })
 
     it('returns elegant notice for empty lists', async () => {
-      mockMakeRequest.mockResolvedValueOnce({ total: 0, issues: [] })
+      mockMakeRequest.mockResolvedValueOnce({ isLast: true, issues: [] })
       const res = await handleSearchIssues({})
       expect(res.text).toContain('No issues found matching query.')
     })
@@ -107,7 +107,7 @@ describe('issue handlers unit tests', () => {
   describe('handleSearchJql (GET variant)', () => {
     it('returns formatted items', async () => {
       mockMakeRequest.mockResolvedValueOnce({
-        total: 1,
+        isLast: true,
         issues: [
           {
             key: 'PROJ-3',
@@ -121,7 +121,9 @@ describe('issue handlers unit tests', () => {
       })
 
       const res = await handleSearchJql({ jql: 'id = PROJ-3' })
-      expect(res.text).toContain('Search Issues Results (GET, total: 1)')
+      expect(res.text).toContain(
+        'Search Issues Results (GET, count: 1, isLast: true)'
+      )
       expect(res.text).toContain(
         '[PROJ-3] GET search test (Status: Done, Assignee: Admin)'
       )
