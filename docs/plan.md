@@ -438,14 +438,46 @@ Or via npx (no global install):
 
 ```jsonc
 {
-  "mcpServers": {
+  "servers": {
     "jira-mcp": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@tugudush/jira-mcp"],
       "env": {
         "JIRA_BASE_URL": "https://your-domain.atlassian.net",
         "JIRA_EMAIL": "your@email.com",
         "JIRA_API_TOKEN": "your-token",
+      },
+    },
+  },
+}
+```
+
+For workspace-level development and testing of local changes:
+
+```jsonc
+{
+  "servers": {
+    "jira-mcp-dev": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "tsx", "src/index.ts"],
+      "env": {
+        "JIRA_BASE_URL": "https://your-domain.atlassian.net",
+        "JIRA_EMAIL": "your@email.com",
+        "JIRA_API_TOKEN": "your-token",
+        "JIRA_DEBUG": "true",
+      },
+    },
+    "jira-mcp-dist": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {
+        "JIRA_BASE_URL": "https://your-domain.atlassian.net",
+        "JIRA_EMAIL": "your@email.com",
+        "JIRA_API_TOKEN": "your-token",
+        "JIRA_DEBUG": "true",
       },
     },
   },

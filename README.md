@@ -142,6 +142,11 @@ npm install
 npm run dev          # tsx watch src/index.ts
 ```
 
+For workspace-level testing inside VS Code/GitHub Copilot, a local configuration is available at [.vscode/mcp.json](.vscode/mcp.json) (ignored by Git). You can configure your credentials there to load either:
+
+- `jira-mcp-dev` — Runs directly from TS source via `tsx` (convenient for active development).
+- `jira-mcp-dist` — Runs the compiled production code from the `dist/` directory.
+
 ### Scripts
 
 | Script                  | What it does                                             |
