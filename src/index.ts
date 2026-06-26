@@ -36,6 +36,13 @@ import {
   handleGetCreateMeta,
 } from './handlers/field.js'
 import {
+  handleListDashboards,
+  handleGetDashboard,
+} from './handlers/dashboard.js'
+import { handleListStatuses, handleListWorkflows } from './handlers/workflow.js'
+import { handleGetIssueLinks } from './handlers/link.js'
+import { handleGetIssueWatchers } from './handlers/watcher.js'
+import {
   GetCurrentUserSchema,
   SearchIssuesSchema,
   GetIssueSchema,
@@ -65,6 +72,11 @@ import {
   ListFieldsSchema,
   ListIssueTypesSchema,
   GetCreateMetaSchema,
+  ListDashboardsSchema,
+  GetDashboardSchema,
+  ListStatusesSchema,
+  ListWorkflowsSchema,
+  GetIssueLinksSchema,
 } from './schemas.js'
 import {
   handleSearchIssues,
@@ -74,7 +86,6 @@ import {
   handleGetIssueChangelog,
   handleGetIssueComments,
   handleGetIssueWorklogs,
-  handleGetIssueWatchers,
 } from './handlers/issue.js'
 import {
   handleListProjects,
@@ -298,16 +309,7 @@ async function runServer() {
     executeHandler(handleGetIssueWorklogs)
   )
 
-  server.registerTool(
-    'jira_get_issue_watchers',
-    {
-      title: 'Get issue watchers',
-      description:
-        'List users watching a Jira issue. Uses GET `/rest/api/3/issue/{issueIdOrKey}/watchers`.',
-      inputSchema: GetIssueWatchersSchema,
-    },
-    executeHandler(handleGetIssueWatchers)
-  )
+  // NOTE: jira_get_issue_watchers has been moved to the Watchers section below.
 
   // --- Projects (5) ---
 
@@ -548,6 +550,80 @@ async function runServer() {
       inputSchema: GetCreateMetaSchema,
     },
     executeHandler(handleGetCreateMeta)
+  )
+
+  // --- Dashboards (2) ---
+
+  server.registerTool(
+    'jira_list_dashboards',
+    {
+      title: 'List Jira Dashboards',
+      description:
+        'List all dashboards in the Jira instance. Uses GET `/rest/api/3/dashboard`. Supports filtering by name.',
+      inputSchema: ListDashboardsSchema,
+    },
+    executeHandler(handleListDashboards)
+  )
+
+  server.registerTool(
+    'jira_get_dashboard',
+    {
+      title: 'Get Jira Dashboard details',
+      description:
+        'Retrieve details of a single dashboard, including its gadgets. Uses GET `/rest/api/3/dashboard/{dashboardId}`.',
+      inputSchema: GetDashboardSchema,
+    },
+    executeHandler(handleGetDashboard)
+  )
+
+  // --- Workflows & Statuses (2) ---
+
+  server.registerTool(
+    'jira_list_statuses',
+    {
+      title: 'List Jira Workflow Statuses',
+      description:
+        'List all workflow statuses in the Jira instance. Uses GET `/rest/api/3/status`.',
+      inputSchema: ListStatusesSchema,
+    },
+    executeHandler(handleListStatuses)
+  )
+
+  server.registerTool(
+    'jira_list_workflows',
+    {
+      title: 'List Jira Workflows',
+      description:
+        'List all workflows in the Jira instance. Uses GET `/rest/api/3/workflow/search`. Supports filtering by name and expanding transitions/statuses.',
+      inputSchema: ListWorkflowsSchema,
+    },
+    executeHandler(handleListWorkflows)
+  )
+
+  // --- Issue Links (1) ---
+
+  server.registerTool(
+    'jira_get_issue_links',
+    {
+      title: 'Get Issue Links',
+      description:
+        'Retrieve outward and inward issue links for an issue. Uses GET `/rest/api/3/issue/{issueIdOrKey}?fields=issuelinks` (Jira does not expose a dedicated issue-links endpoint).',
+      inputSchema: GetIssueLinksSchema,
+    },
+    executeHandler(handleGetIssueLinks)
+  )
+
+  // --- Watchers (1) ---
+
+  server.registerTool(
+    'jira_get_issue_watchers',
+    {
+      title: 'Get issue watchers',
+      description:
+        'List users watching a Jira issue. Uses GET `/rest/api/3/issue/{issueIdOrKey}/watchers`.',
+      inputSchema: GetIssueWatchersSchema,
+    },
+    executeHandler(handleGetIssueWatchers)
   )
 
   const transport = new StdioServerTransport()

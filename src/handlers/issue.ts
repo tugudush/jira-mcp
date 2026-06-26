@@ -55,17 +55,6 @@ interface WorklogEntry {
   comment?: unknown
 }
 
-interface WatcherEntry {
-  displayName?: string
-  accountId: string
-}
-
-interface WatchersResponse {
-  isWatching?: boolean
-  watchCount?: number
-  watchers?: WatcherEntry[]
-}
-
 interface PaginatedResponse<T> {
   startAt: number
   maxResults: number
@@ -463,33 +452,6 @@ export async function handleGetIssueWorklogs(args: {
     text += 'No worklogged hours found.'
   } else {
     text += worklogs.map(formatWorklog).join('\n\n')
-  }
-
-  return { text, data }
-}
-
-function formatWatcher(w: WatcherEntry): string {
-  return `- Name: ${w.displayName || 'Unknown'} (Account ID: ${w.accountId})`
-}
-
-/**
- * 8. List watchers of an issue
- */
-export async function handleGetIssueWatchers(args: {
-  issueIdOrKey: string
-}): Promise<{ text: string; data: unknown }> {
-  const url = buildApiUrl(`/rest/api/3/issue/${args.issueIdOrKey}/watchers`)
-  const data = await makeRequest<WatchersResponse>(url)
-
-  const isWatching = data.isWatching ?? false
-  const watchCount = data.watchCount ?? 0
-  const watchers = data.watchers || []
-
-  let text = `Watchers for ${args.issueIdOrKey} (Watch Count: ${watchCount}, You Watching: ${isWatching}):\n`
-  if (watchers.length === 0) {
-    text += 'No watchers.'
-  } else {
-    text += watchers.map(formatWatcher).join('\n')
   }
 
   return { text, data }

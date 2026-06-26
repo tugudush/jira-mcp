@@ -7,7 +7,6 @@ import {
   handleGetIssueChangelog,
   handleGetIssueComments,
   handleGetIssueWorklogs,
-  handleGetIssueWatchers,
   convertAdfToText,
 } from '../../src/handlers/issue.js'
 import * as api from '../../src/api.js'
@@ -251,24 +250,6 @@ describe('issue handlers unit tests', () => {
         'Author: Jerome | Started: 2026-06-20T08:00:00Z | Time Spent: 4h'
       )
       expect(res.text).toContain('Comment: Working through the problems.')
-    })
-  })
-
-  describe('handleGetIssueWatchers', () => {
-    it('returns watchers information', async () => {
-      mockMakeRequest.mockResolvedValueOnce({
-        isWatching: true,
-        watchCount: 2,
-        watchers: [
-          { displayName: 'Alice', accountId: 'acc-alice' },
-          { displayName: 'Bob', accountId: 'acc-bob' },
-        ],
-      })
-
-      const res = await handleGetIssueWatchers({ issueIdOrKey: 'PROJ-123' })
-      expect(res.text).toContain('Watch Count: 2, You Watching: true')
-      expect(res.text).toContain('- Name: Alice (Account ID: acc-alice)')
-      expect(res.text).toContain('- Name: Bob (Account ID: acc-bob)')
     })
   })
 })
