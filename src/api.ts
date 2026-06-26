@@ -2,23 +2,23 @@
  * Jira API configuration and request handling with Basic Auth, timeouts, and retries.
  */
 
-import { loadConfig } from "./config.js";
-import { createApiError, JiraApiError, WriteDisabledError } from "./errors.js";
-import { VERSION } from "./generated/version.js";
+import { loadConfig } from './config.js'
+import { createApiError, JiraApiError, WriteDisabledError } from './errors.js'
+import { VERSION } from './generated/version.js'
 
 // Sleep helper
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
  * Build authentication headers based on credentials.
  */
 export function buildAuthHeaders(): Record<string, string> {
-  const config = loadConfig();
-  const credentials = `${config.JIRA_EMAIL}:${config.JIRA_API_TOKEN}`;
-  const base64Str = Buffer.from(credentials).toString("base64");
+  const config = loadConfig()
+  const credentials = `${config.JIRA_EMAIL}:${config.JIRA_API_TOKEN}`
+  const base64Str = Buffer.from(credentials).toString('base64')
   return {
     Authorization: `Basic ${base64Str}`,
-  };
+  }
 }
 
 /**
@@ -27,29 +27,29 @@ export function buildAuthHeaders(): Record<string, string> {
  * @returns Complete headers object
  */
 export function buildRequestHeaders(
-  accept = "application/json",
+  accept = 'application/json'
 ): Record<string, string> {
   return {
     Accept: accept,
-    "User-Agent": `jira-mcp/${VERSION}`,
+    'User-Agent': `jira-mcp/${VERSION}`,
     ...buildAuthHeaders(),
-  };
+  }
 }
 
 /**
  * Check if the HTTP status indicates a retryable, transient error.
  */
 function isRetryableError(status: number): boolean {
-  return status === 429 || (status >= 500 && status <= 599);
+  return status === 429 || (status >= 500 && status <= 599)
 }
 
 /**
  * Build complete URL for Jira endpoints.
  */
 export function buildApiUrl(endpoint: string): string {
-  const config = loadConfig();
-  const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  return `${config.JIRA_BASE_URL}${path}`;
+  const config = loadConfig()
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  return `${config.JIRA_BASE_URL}${path}`
 }
 
 /**
@@ -57,15 +57,15 @@ export function buildApiUrl(endpoint: string): string {
  */
 export function addQueryParams(
   url: string,
-  params: Record<string, unknown>,
+  params: Record<string, unknown>
 ): string {
-  const urlObj = new URL(url);
+  const urlObj = new URL(url)
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
-      urlObj.searchParams.append(key, String(value));
+      urlObj.searchParams.append(key, String(value))
     }
-  });
-  return urlObj.toString();
+  })
+  return urlObj.toString()
 }
 
 /**
@@ -74,26 +74,26 @@ export function addQueryParams(
 async function fetchWithTimeout(
   url: string,
   options: RequestInit,
-  timeoutMs: number,
+  timeoutMs: number
 ): Promise<Response> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
-    });
-    clearTimeout(id);
-    return response;
+    })
+    clearTimeout(id)
+    return response
   } catch (err: unknown) {
-    clearTimeout(id);
-    if (err instanceof Error && err.name === "AbortError") {
+    clearTimeout(id)
+    if (err instanceof Error && err.name === 'AbortError') {
       throw new Error(`Request to ${url} timed out after ${timeoutMs}ms.`, {
         cause: err,
-      });
+      })
     }
-    throw err;
+    throw err
   }
 }
 
@@ -102,12 +102,12 @@ async function fetchWithTimeout(
  */
 async function parseErrorResponseBody(response: Response): Promise<unknown> {
   try {
-    return await response.json();
+    return await response.json()
   } catch {
     try {
-      return { message: await response.text() };
+      return { message: await response.text() }
     } catch {
-      return null;
+      return null
     }
   }
 }
@@ -118,14 +118,14 @@ async function parseErrorResponseBody(response: Response): Promise<unknown> {
 async function executeRequestAttempt(
   url: string,
   options: RequestInit,
-  timeoutMs: number,
+  timeoutMs: number
 ): Promise<Response> {
-  const response = await fetchWithTimeout(url, options, timeoutMs);
+  const response = await fetchWithTimeout(url, options, timeoutMs)
   if (response.ok) {
-    return response;
+    return response
   }
-  const errorBody = await parseErrorResponseBody(response);
-  throw createApiError(response.status, response.statusText, url, errorBody);
+  const errorBody = await parseErrorResponseBody(response)
+  throw createApiError(response.status, response.statusText, url, errorBody)
 }
 
 /**
@@ -133,9 +133,9 @@ async function executeRequestAttempt(
  */
 function logDebug(message: string, ...args: unknown[]): void {
   try {
-    const config = loadConfig();
+    const config = loadConfig()
     if (config.JIRA_DEBUG) {
-      console.error(`[jira-mcp] ${message}`, ...args);
+      console.error(`[jira-mcp] ${message}`, ...args)
     }
   } catch {
     // If config hasn't loaded yet
@@ -148,20 +148,20 @@ function logDebug(message: string, ...args: unknown[]): void {
 function shouldRetryAttempt(
   err: unknown,
   attempt: number,
-  maxAttempts: number,
+  maxAttempts: number
 ): boolean {
-  if (attempt >= maxAttempts) return false;
+  if (attempt >= maxAttempts) return false
   if (err instanceof JiraApiError) {
-    return isRetryableError(err.status);
+    return isRetryableError(err.status)
   }
-  return true;
+  return true
 }
 
 /**
  * Ensure an error is an instance of Error.
  */
 function normalizeError(err: unknown): Error {
-  return err instanceof Error ? err : new Error(String(err));
+  return err instanceof Error ? err : new Error(String(err))
 }
 
 /**
@@ -169,40 +169,40 @@ function normalizeError(err: unknown): Error {
  */
 async function performRequest(
   url: string,
-  options: RequestInit = {},
+  options: RequestInit = {}
 ): Promise<Response> {
-  const config = loadConfig();
-  const timeoutMs = config.JIRA_REQUEST_TIMEOUT_MS;
-  const retryAttempts = 3;
-  let delay = 1000; // Exponential backoff initial delay
+  const config = loadConfig()
+  const timeoutMs = config.JIRA_REQUEST_TIMEOUT_MS
+  const retryAttempts = 3
+  let delay = 1000 // Exponential backoff initial delay
 
-  let lastError: Error | null = null;
+  let lastError: Error | null = null
 
   for (let attempt = 1; attempt <= retryAttempts; attempt++) {
     try {
       logDebug(
-        `HTTP ${options.method || "GET"} ${url} (Attempt ${attempt}/${retryAttempts})`,
-      );
-      return await executeRequestAttempt(url, options, timeoutMs);
+        `HTTP ${options.method || 'GET'} ${url} (Attempt ${attempt}/${retryAttempts})`
+      )
+      return await executeRequestAttempt(url, options, timeoutMs)
     } catch (err: unknown) {
-      const errorToThrow = normalizeError(err);
-      lastError = errorToThrow;
+      const errorToThrow = normalizeError(err)
+      lastError = errorToThrow
 
       if (shouldRetryAttempt(err, attempt, retryAttempts)) {
         logDebug(
           `Transient failure. Retrying in ${delay}ms...`,
-          errorToThrow.message,
-        );
-        await sleep(delay);
-        delay *= 2;
-        continue;
+          errorToThrow.message
+        )
+        await sleep(delay)
+        delay *= 2
+        continue
       }
 
-      throw lastError;
+      throw lastError
     }
   }
 
-  throw lastError || new Error("Request failed after all retries.");
+  throw lastError || new Error('Request failed after all retries.')
 }
 
 /**
@@ -210,27 +210,33 @@ async function performRequest(
  */
 export async function makeRequest<T = unknown>(
   url: string,
-  options: RequestInit = {},
+  options: RequestInit = {}
 ): Promise<T> {
-  const method = (options.method || "GET").toString().toUpperCase();
-  if (method !== "GET") {
+  const method = (options.method || 'GET').toString().toUpperCase()
+  if (method !== 'GET' && !(method === 'POST' && url.includes('/search'))) {
     throw new Error(
-      `Only GET requests are allowed in makeRequest. Use makeWriteRequest for mutations.`,
-    );
+      `Only GET requests are allowed in makeRequest. Use makeWriteRequest for mutations.`
+    )
+  }
+
+  const extraHeaders: Record<string, string> = {}
+  if (method === 'POST') {
+    extraHeaders['Content-Type'] = 'application/json'
   }
 
   const headers = {
-    ...buildRequestHeaders("application/json"),
+    ...buildRequestHeaders('application/json'),
+    ...extraHeaders,
     ...((options.headers as Record<string, string>) || {}),
-  };
+  }
 
   const response = await performRequest(url, {
     ...options,
     method,
     headers,
-  });
+  })
 
-  return (await response.json()) as T;
+  return (await response.json()) as T
 }
 
 /**
@@ -238,25 +244,25 @@ export async function makeRequest<T = unknown>(
  */
 export async function makeTextRequest(
   url: string,
-  options: RequestInit = {},
+  options: RequestInit = {}
 ): Promise<string> {
-  const method = (options.method || "GET").toString().toUpperCase();
-  if (method !== "GET") {
-    throw new Error(`Only GET requests are allowed in makeTextRequest.`);
+  const method = (options.method || 'GET').toString().toUpperCase()
+  if (method !== 'GET') {
+    throw new Error(`Only GET requests are allowed in makeTextRequest.`)
   }
 
   const headers = {
-    ...buildRequestHeaders("text/plain"),
+    ...buildRequestHeaders('text/plain'),
     ...((options.headers as Record<string, string>) || {}),
-  };
+  }
 
   const response = await performRequest(url, {
     ...options,
     method,
     headers,
-  });
+  })
 
-  return await response.text();
+  return await response.text()
 }
 
 /**
@@ -264,20 +270,20 @@ export async function makeTextRequest(
  */
 async function parseJsonResponse<T>(response: Response): Promise<T> {
   if (response.status === 204) {
-    return {} as T;
+    return {} as T
   }
 
-  const contentType = response.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    return (await response.json()) as T;
+  const contentType = response.headers.get('content-type') || ''
+  if (contentType.includes('application/json')) {
+    return (await response.json()) as T
   }
 
   try {
-    const text = await response.text();
-    if (!text) return {} as T;
-    return JSON.parse(text) as T;
+    const text = await response.text()
+    if (!text) return {} as T
+    return JSON.parse(text) as T
   } catch {
-    return {} as T;
+    return {} as T
   }
 }
 
@@ -288,31 +294,31 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
 export async function makeWriteRequest<T = unknown>(
   url: string,
   toolName: string,
-  options: RequestInit = {},
+  options: RequestInit = {}
 ): Promise<T> {
-  const config = loadConfig();
+  const config = loadConfig()
   if (!config.JIRA_ALLOW_WRITES) {
-    throw new WriteDisabledError(toolName);
+    throw new WriteDisabledError(toolName)
   }
 
-  const method = (options.method || "POST").toString().toUpperCase();
-  if (method === "GET") {
+  const method = (options.method || 'POST').toString().toUpperCase()
+  if (method === 'GET') {
     throw new Error(
-      `GET requests should use makeRequest, not makeWriteRequest.`,
-    );
+      `GET requests should use makeRequest, not makeWriteRequest.`
+    )
   }
 
   const headers = {
-    ...buildRequestHeaders("application/json"),
-    "Content-Type": "application/json",
+    ...buildRequestHeaders('application/json'),
+    'Content-Type': 'application/json',
     ...((options.headers as Record<string, string>) || {}),
-  };
+  }
 
   const response = await performRequest(url, {
     ...options,
     method,
     headers,
-  });
+  })
 
-  return await parseJsonResponse<T>(response);
+  return await parseJsonResponse<T>(response)
 }

@@ -3,7 +3,8 @@
 > **Status (2026-06-26)** — 🚧 **In development**
 > ✅ **Phase 0** done (scaffolding, commit [`752f58d`](https://github.com/tugudush/jira-mcp/commit/752f58d), pushed to `origin/main`)
 > ✅ **Phase 1** done (core infrastructure, config, errors, api with retry/timeout, formatters/filters, bootstrapped standard server and smoke tool)
-> ⏭️ **Phase 2** next — Issues & Projects (8 issue tools, 5 project tools, full schemas and unit/integration testing)
+> ✅ **Phase 2** done (Issues & Projects: 8 issue tools, 5 project tools, full schemas and unit/mocked testing)
+> ⏭️ **Phase 3** next — Agile, Users, Filters, Fields (7 board/sprint tools, 4 user tools, 3 filter tools, 3 field tools)
 > See [Progress Log](#progress-log) for the running record and §9 for the full phased plan.
 
 ---
@@ -240,26 +241,26 @@ src/
 Lifted from video-context-mcp's `src/index.ts`:
 
 ```ts
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 const server = new McpServer(
-  { name: "jira-mcp", version: VERSION },
-  { capabilities: { logging: {} } },
-);
+  { name: 'jira-mcp', version: VERSION },
+  { capabilities: { logging: {} } }
+)
 
 server.registerTool(
-  "jira_search_issues",
+  'jira_search_issues',
   {
-    title: "Search Jira issues (JQL)",
-    description: "Run a JQL query and return matching issues…",
+    title: 'Search Jira issues (JQL)',
+    description: 'Run a JQL query and return matching issues…',
     inputSchema: searchIssuesSchema,
   },
-  searchIssuesHandler,
-);
+  searchIssuesHandler
+)
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+const transport = new StdioServerTransport()
+await server.connect(transport)
 ```
 
 ### Cross-cutting features (port from bitbucket-mcp + new)
@@ -538,9 +539,9 @@ into the consumer repo and how the model picks it up automatically.
 
 ### Phase 2 — Issues & Projects (2 days)
 
-- [ ] `handlers/issue.ts` — 8 tools
-- [ ] `handlers/project.ts` — 5 tools
-- [ ] Unit tests in `tests/handlers/issue.test.ts`, `project.test.ts` (Vitest + `vi.mock` of `makeRequest`)
+- [x] `handlers/issue.ts` — 8 tools
+- [x] `handlers/project.ts` — 5 tools
+- [x] Unit tests in `tests/handlers/issue.test.ts`, `project.test.ts` (Vitest + `vi.mock` of `makeRequest`)
 - [ ] Integration test against real Jira Cloud sandbox site (gated by env vars)
 
 ### Phase 3 — Agile, Users, Filters, Fields (2 days)
@@ -741,7 +742,33 @@ cc99187 (HEAD -> feature/phase-01, origin/feature/phase-01) feat: implement Phas
 4452a07 initial commit
 ```
 
-**Next**: Phase 2 — Issues & Projects (`handlers/issue.ts` for 8 issue tools, `handlers/project.ts` for 5 project tools, schemas, unit and integration sandbox test sweeps). ETA per plan: 2 days.
+### ✅ Phase 2 — Issues & Projects — _completed 2026-06-26_
+
+**What landed** (6 files added/updated, ~700 lines)
+
+- `src/handlers/issue.ts` — Implemented all 8 issue retrieval and JQL search tools (`jira_search_issues`, `jira_search_jql`, `jira_get_issue`, `jira_get_issue_transitions`, `jira_get_issue_changelog`, `jira_get_issue_comments`, `jira_get_issue_worklogs`, `jira_get_issue_watchers`) with robust nested type-safety interfaces, low-complexity formatting engines incorporating clean, recursive conversion from Atlassian Document Format (ADF) to plain text.
+- `src/handlers/project.ts` — Implemented all 5 project listing and detail tools (`jira_list_projects`, `jira_get_project`, `jira_get_project_components`, `jira_get_project_versions`, `jira_get_project_statuses`) with comprehensive TypeScript mappings and zero `any` parameters.
+- `src/schemas.ts` — Created and exported Zod input schemas for all 13 new tools.
+- `src/index.ts` — Registered all 13 Phase-2 tools to the stdio MCP Server under corresponding naming contracts.
+- `src/api.ts` — Upgraded standard read-helper `makeRequest` to securely support read-only POST JQL queries (e.g. `/search`) independently of the write protection state of the server.
+- `tests/handlers/` — Added fully mocked unit tests in `tests/handlers/issue.test.ts` and `tests/handlers/project.test.ts` matching 100% of the newly added behaviors.
+
+**Verification — all green**
+
+| Command                | Result                                                                              |
+| ---------------------- | ----------------------------------------------------------------------------------- |
+| `npm run lint`         | clean (maximum warnings 0, all complexity and any warnings fully resolved)          |
+| `npm run type-check`   | clean (TS 6, strict, NodeNext, tsc --noEmit)                                        |
+| `npm run test`         | 56/56 passed (100% of errors, config, formatters, filters, api, handlers validated) |
+| `npm run build`        | clean typescript build outputs to dist/ directory                                   |
+| `npm run format:check` | clean prettier compliance                                                           |
+
+**Lessons learned**
+
+- **ESLint Complexity & Optionals:** Each optional chaining (`?.`) or coalescing fallback operator (`??`) directly escalates the complexity metric, making standard detailed formatting blocks trigger complexity warnings. Extracting deep property paths into safe getter helpers (like `getFieldProp()`) effectively lowers the function's branch counts and keeps the complexity well below limits.
+- **Mocking utility `vi.mocked`:** In Vitest, use the type-safe `vi.mocked()` helper instead of standard `as any` casts to satisfy strict linter guidelines cleanly.
+
+**Next**: Phase 3 — Agile, Users, Filters, Fields (`handlers/agile.ts` for 7 boards/sprint tools, `handlers/user.ts` for 4 user tools, etc.).
 
 ---
 
