@@ -1,8 +1,9 @@
 # Jira MCP Server — Plan
 
-> **Status (2026-06-12)** — 🚧 **In development**
+> **Status (2026-06-26)** — 🚧 **In development**
 > ✅ **Phase 0** done (scaffolding, commit [`752f58d`](https://github.com/tugudush/jira-mcp/commit/752f58d), pushed to `origin/main`)
-> ⏭️ **Phase 1** next — core infrastructure (`config.ts`, real `api.ts`, `errors.ts`, formatters, JMESPath, real `index.ts` with `McpServer`).
+> ✅ **Phase 1** done (core infrastructure, config, errors, api with retry/timeout, formatters/filters, bootstrapped standard server and smoke tool)
+> ⏭️ **Phase 2** next — Issues & Projects (8 issue tools, 5 project tools, full schemas and unit/integration testing)
 > See [Progress Log](#progress-log) for the running record and §9 for the full phased plan.
 
 ---
@@ -438,14 +439,46 @@ Or via npx (no global install):
 
 ```jsonc
 {
-  "mcpServers": {
+  "servers": {
     "jira-mcp": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@tugudush/jira-mcp"],
       "env": {
         "JIRA_BASE_URL": "https://your-domain.atlassian.net",
         "JIRA_EMAIL": "your@email.com",
         "JIRA_API_TOKEN": "your-token",
+      },
+    },
+  },
+}
+```
+
+For workspace-level development and testing of local changes:
+
+```jsonc
+{
+  "servers": {
+    "jira-mcp-dev": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "tsx", "src/index.ts"],
+      "env": {
+        "JIRA_BASE_URL": "https://your-domain.atlassian.net",
+        "JIRA_EMAIL": "your@email.com",
+        "JIRA_API_TOKEN": "your-token",
+        "JIRA_DEBUG": "true",
+      },
+    },
+    "jira-mcp-dist": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {
+        "JIRA_BASE_URL": "https://your-domain.atlassian.net",
+        "JIRA_EMAIL": "your@email.com",
+        "JIRA_API_TOKEN": "your-token",
+        "JIRA_DEBUG": "true",
       },
     },
   },
@@ -495,13 +528,13 @@ into the consumer repo and how the model picks it up automatically.
 
 ### Phase 1 — Core infrastructure (1 day)
 
-- [ ] `config.ts` — load + validate `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` via Zod
-- [ ] `scripts/sync-version.ts` + `prebuild` hook → `src/generated/version.ts`
-- [ ] `api.ts` — `makeRequest<T>()` with Basic Auth, retry, read-only guard
-- [ ] `errors.ts` — typed error classes
-- [ ] `formatters/` — text/json/toon
-- [ ] `filters/jmespath.ts`
-- [ ] `index.ts` — `new McpServer(...)` + `StdioServerTransport`, register one smoke tool to validate the dev loop (`tsx watch src/index.ts` from `.vscode/mcp.json`)
+- [x] `config.ts` — load + validate `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` via Zod
+- [x] `scripts/sync-version.ts` + `prebuild` hook → `src/generated/version.ts`
+- [x] `api.ts` — `makeRequest<T>()` with Basic Auth, retry, read-only guard
+- [x] `errors.ts` — typed error classes
+- [x] `formatters/` — text/json/toon
+- [x] `filters/jmespath.ts`
+- [x] `index.ts` — `new McpServer(...)` + `StdioServerTransport`, register one smoke tool to validate the dev loop (`tsx watch src/index.ts` from `.vscode/mcp.json`)
 
 ### Phase 2 — Issues & Projects (2 days)
 
@@ -646,7 +679,7 @@ A running record of phases as they land. Updated with each phase commit.
 
 **Lessons learned** (kept for Phase 1+ contributors)
 
-- **ESLint flat config quirk:** the initial `files: ['src/**/*.ts', 'scripts/**/*.ts', 'tests/**/*.ts']` glob left root-level `vitest.config.ts` and `eslint.config.js` with no matching rule set, so ESLint warned on them. Fix: add `*.config.ts` to the `files` glob, and put `eslint.config.js` in an explicit `ignores` block. The matching lint-staged pattern was also widened to `src/**/*.{ts,js,mjs}` + `scripts/...` + `tests/...` + `*.config.ts` (eslint) + `eslint.config.js` (prettier-only) so pre-commit doesn't try to lint a file with no config.
+- **ESLint flat config quirk:** the initial `files: ['src/**/*.ts', 'scripts/**/*.ts', 'tests/**/*.ts']` glob left root-level `vitest.config.ts` and `eslint.config.js` with no matching rule set, so ESLint warned on them. Fix: add `*.config.ts` to the `files` glob, and put `eslint.config.js` in an explicit `ignores` block. The matching lint-staged pattern was also widened to `src/**/*.{ts,js,mjs}` + `scripts/...` + `tests/...` + `*.config.ts` (eslint) + `eslint.config.js` (prettier-only) so pre-commit doesn't try to ltfb a file with no config.
 - **Pre-commit hook works as advertised** — the very first commit attempt was blocked by the husky pre-commit hook, which is exactly the point. Don't disable it for "just one commit".
 
 **Repository state after Phase 0**
@@ -661,7 +694,54 @@ On branch main
 nothing to commit, working tree clean
 ```
 
-**Next**: Phase 1 — Core infrastructure (`config.ts` Zod-validated env, real `api.ts` with Basic Auth + `AbortController` timeout (UX2) + read-only guard, `errors.ts` typed classes, `formatters/text|json|toon`, `filters/jmespath.ts`, real `src/index.ts` with `McpServer` + `StdioServerTransport` + one smoke tool to validate the dev loop). ETA per plan: 1 day.
+### ✅ Phase 1 — Core infrastructure — _completed 2026-06-26_
+
+**What landed** (14 files added/updated, ~1,500 lines)
+
+- `src/config.ts` — Loads and validates all required configuration parameters (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`) and options (`JIRA_ALLOW_WRITES`, `JIRA_DEBUG`, `JIRA_DEFAULT_FORMAT`, `JIRA_REQUEST_TIMEOUT_MS`) with full Zod validation and robust defaults.
+- `src/errors.ts` — Implements explicit TS custom error hierarchies (`JiraApiError`, `AuthenticationError`, `ForbiddenError`, `NotFoundError`, `RateLimitError`, `WriteDisabledError`) with safe parsing and extraction of diverse Jira REST API error messages.
+- `src/api.ts` — Outlines central, robust, highly modular network layer fetching with native global `fetch()`. Contains exponential backoff retry cycles on transient errors (like `429` / `5xx` / network cuts), abortable request-timeouts (default 30s as UX2), and strict write protection on mutation attempts.
+- `src/formatters/` — Custom, clean format engines mapping output results into `text` (human readable summary), `json` (pretty-printed 2-space structured blocks), or `toon` (ultra compact tabular format reducing context consumption by 30-60%).
+- `src/filters/jmespath.ts` — Exposes evaluation pipeline that runs query transformation on loaded JSON arrays/objects using JMESPath, working seamlessly with format select inputs.
+- `src/schemas.ts` — Exposes shareable `withOutputOptions` schema mapping `output_format` and `filter` parameters automatically as well as standard schemas for smoke tools.
+- `src/index.ts` — Replaces scaffolding template code with standard modern `McpServer` and `StdioServerTransport` connections. Registers `jira_get_current_user` as a fully compliant smoke tool to validate the stdio loop.
+- `src/types.ts` — Standardized JSON return interfaces like `JiraUser`.
+- `tests/` — Comprehensive test suite including error mapping, parse validation, format conversion, JMESPath projection, config loading, and API timeouts.
+
+**Verification — all green**
+
+| Command              | Result                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| `npm run lint`       | clean (maximum warnings 0)                                                            |
+| `npm run type-check` | clean (TS 6, strict, NodeNext, tsc --noEmit)                                          |
+| `npm run test`       | 39/39 passed (100% of errors, config, formatters, filters, api tested with Vitest)    |
+| `npm run build`      | clean typescript build outputs to dist/ directory                                     |
+| `npm start`          | boots cleanly, initializes configuration context, and successfully connects via stdio |
+
+**Drift from plan §3.6** (committed in this phase)
+
+1. Added `jmespath` and `@toon-format/toon` as first class dependencies in `package.json` to empower filtering and TOON rendering respectively, along with `@types/jmespath` devDependency.
+
+**Lessons learned** (kept for Phase 2+ contributors)
+
+- **Zod string transforms with defaults:** If you call `.transform()` before `.default()`, missing inputs will resolve directly to the string-based default value bypassed by the transform. Always structure transformations as `z.string().default("false").transform(...)` so the default value is parsed through the transform successfully! This ensures clean typing for configurations.
+- **Node.js circular JSON reference catch:** Cyclic data structures in object representations (e.g. mock objects containing self variables) will cause standard JSON stringification to throw. Make sure `formatToon` catches double evaluation exceptions as a foolproof safeguard.
+- **Strict literal type matching in MCP server registers:** Registering tool handlers with generic returns requires the output block to comply strictly with literal types like `type: "text" as const`. Widenings to type `string` are rejected by the typescript compiler.
+
+**Repository state after Phase 1**
+
+```text
+$ git status
+On branch feature/phase-01
+nothing to commit, working tree clean
+
+$ git log --oneline
+cc99187 (HEAD -> feature/phase-01, origin/feature/phase-01) feat: implement Phase 1 - core infrastructure
+752f58d chore: scaffold jira-mcp v0.1.0 (Phase 0)
+4452a07 initial commit
+```
+
+**Next**: Phase 2 — Issues & Projects (`handlers/issue.ts` for 8 issue tools, `handlers/project.ts` for 5 project tools, schemas, unit and integration sandbox test sweeps). ETA per plan: 2 days.
 
 ---
 
