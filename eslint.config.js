@@ -10,6 +10,7 @@ export default [
       '**/dist/**',
       '**/node_modules/**',
       '**/coverage/**',
+      '**/*.cjs',
       'eslint.config.js',
     ],
   },

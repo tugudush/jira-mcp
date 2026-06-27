@@ -18,7 +18,7 @@ const ConfigSchema = z.object({
   JIRA_API_TOKEN: z.string().min(1),
 
   // Operational Settings
-  JIRA_ALLOW_WRITES: z
+  JIRA_ALLOW_ISSUE_UPDATES: z
     .string()
     .default('false')
     .transform((val) => val === 'true'),
@@ -65,9 +65,10 @@ export function initializeConfig(): Config {
   const config = loadConfig()
 
   // Log configuration status on stderr (never stdout)
-  console.error(
-    `[jira-mcp] Mode: ${config.JIRA_ALLOW_WRITES ? 'READ-WRITE (opt-in)' : 'READ-ONLY (default)'}`
-  )
+  const mode = config.JIRA_ALLOW_ISSUE_UPDATES
+    ? 'READS + SCOPED ISSUE UPDATES'
+    : 'READ-ONLY (default)'
+  console.error(`[jira-mcp] Mode: ${mode}`)
   console.error(`[jira-mcp] Base URL: ${config.JIRA_BASE_URL}`)
   console.error(`[jira-mcp] Auth Email: ${config.JIRA_EMAIL}`)
   if (config.JIRA_DEBUG) {

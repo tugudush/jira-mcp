@@ -6,7 +6,8 @@ import {
   ForbiddenError,
   NotFoundError,
   RateLimitError,
-  WriteDisabledError,
+  IssueUpdateDisabledError,
+  IssueUpdatePermissionError,
 } from '../src/errors.js'
 
 describe('errors.ts unit tests', () => {
@@ -119,13 +120,21 @@ describe('errors.ts unit tests', () => {
     })
   })
 
-  describe('WriteDisabledError', () => {
+  describe('IssueUpdateDisabledError', () => {
     it('contains the custom message and suggestion', () => {
-      const err = new WriteDisabledError('jira_create_issue')
+      const err = new IssueUpdateDisabledError()
+      expect(err.message).toContain('Scoped issue updates are disabled.')
+      expect(err.suggestion).toContain('JIRA_ALLOW_ISSUE_UPDATES=true')
+    })
+  })
+
+  describe('IssueUpdatePermissionError', () => {
+    it('contains the issue key and suggestion', () => {
+      const err = new IssueUpdatePermissionError('PROJ-123')
       expect(err.message).toContain(
-        'Write tool "jira_create_issue" called but write operations are disabled.'
+        'Issue "PROJ-123" can only be updated by its reporter or assignee.'
       )
-      expect(err.suggestion).toContain('JIRA_ALLOW_WRITES=true')
+      expect(err.suggestion).toContain('reporter or assignee')
     })
   })
 })

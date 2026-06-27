@@ -2,7 +2,7 @@
 
 A focused, **Jira-only** Model Context Protocol (MCP) server with bitbucket-mcp-grade developer ergonomics. Talks to the **Jira Cloud REST API v3** directly using an Atlassian email + API token — no OAuth dance, no admin gating, works today.
 
-🎯 **43 tools** across **10 categories** (35 read + 8 opt-in write) · ✅ Read-only by default · 🏗️ Modern TS 6 + ESM · 📦 TOON / JSON / text output formats
+🎯 **36 tools** (35 read + 1 scoped issue text update) · ✅ Read-only by default · 🏗️ Modern TS 6 + ESM · 📦 TOON / JSON / text output formats
 
 > **Status**: 🚧 v1.0 in development — see [docs/plan.md](docs/plan.md) for the full roadmap and [competitors.md](competitors.md) for the research that informed it.
 
@@ -20,7 +20,7 @@ The official [Atlassian MCP (Rovo)](https://support.atlassian.com/atlassian-rovo
 - A Jira Cloud site (e.g. `https://your-domain.atlassian.net`)
 - An API token is required. Create a classic (unscoped) API token at <https://id.atlassian.com/manage-profile/security/api-tokens>:
   - **Important:** Click **"Create API token"** (do NOT use "Create API token with scopes", as scoped tokens can fail to authorize various Jira platform endpoints correctly).
-  - Make sure your Atlassian account has active read/write permissions for the target Jira project.
+  - Make sure your Atlassian account has active read permissions for the target Jira project. The optional issue text update also requires Jira edit permission, and this server still refuses the update unless the authenticated account is the issue reporter or assignee.
 
 ---
 
@@ -102,15 +102,15 @@ Or via npx (no global install):
 
 ## Environment Variables
 
-| Variable                  | Required | Default | Description                                                                     |
-| ------------------------- | -------- | ------- | ------------------------------------------------------------------------------- |
-| `JIRA_BASE_URL`           | Yes      | —       | Your Jira Cloud site URL (no trailing slash)                                    |
-| `JIRA_EMAIL`              | Yes      | —       | Atlassian account email                                                         |
-| `JIRA_API_TOKEN`          | Yes      | —       | API token from <https://id.atlassian.com/manage-profile/security/api-tokens>    |
-| `JIRA_ALLOW_WRITES`       | No       | `false` | Set to `true` to enable the 8 write tools (create/update/assign/transition/...) |
-| `JIRA_DEBUG`              | No       | `false` | Verbose stderr logging (URLs + status codes only — no bodies, no headers)       |
-| `JIRA_DEFAULT_FORMAT`     | No       | `text`  | Default output format: `text` / `json` / `toon`                                 |
-| `JIRA_REQUEST_TIMEOUT_MS` | No       | `30000` | Per-request timeout in milliseconds                                             |
+| Variable                   | Required | Default | Description                                                                                                   |
+| -------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| `JIRA_BASE_URL`            | Yes      | —       | Your Jira Cloud site URL (no trailing slash)                                                                  |
+| `JIRA_EMAIL`               | Yes      | —       | Atlassian account email                                                                                       |
+| `JIRA_API_TOKEN`           | Yes      | —       | API token from <https://id.atlassian.com/manage-profile/security/api-tokens>                                  |
+| `JIRA_ALLOW_ISSUE_UPDATES` | No       | `false` | Set to `true` to enable only `jira_update_issue_text`; updates still require reporter/assignee identity match |
+| `JIRA_DEBUG`               | No       | `false` | Verbose stderr logging (URLs + status codes only — no bodies, no headers)                                     |
+| `JIRA_DEFAULT_FORMAT`      | No       | `text`  | Default output format: `text` / `json` / `toon`                                                               |
+| `JIRA_REQUEST_TIMEOUT_MS`  | No       | `30000` | Per-request timeout in milliseconds                                                                           |
 
 No secrets are ever logged. `JIRA_DEBUG=true` only logs URLs and status codes.
 
@@ -123,7 +123,7 @@ No secrets are ever logged. `JIRA_DEBUG=true` only logs URLs and status codes.
 - **Agile** boards, sprints, backlog issues
 - **Users** (current user, search, assignable)
 - **Saved filters**, dashboards, workflows, issue links
-- **Opt-in writes** behind `JIRA_ALLOW_WRITES=true`: create, update, assign, transition, comment, worklog
+- **Opt-in scoped issue text update** behind `JIRA_ALLOW_ISSUE_UPDATES=true`: update only issue title (`summary`) and description, only as reporter or assignee
 - **TOON** output format (30–60% token savings) with `text` / `json` fallback
 - **JMESPath `filter` parameter** on every tool
 - **Response truncation with raw file logging** when payloads exceed ~10k tokens (aashari pattern)

@@ -68,14 +68,31 @@ export class RateLimitError extends JiraApiError {
   }
 }
 
-export class WriteDisabledError extends Error {
+export class IssueUpdateDisabledError extends Error {
   suggestion: string
 
-  constructor(toolName: string) {
-    super(`Write tool "${toolName}" called but write operations are disabled.`)
-    this.name = 'WriteDisabledError'
+  constructor() {
+    super('Scoped issue updates are disabled.')
+    this.name = 'IssueUpdateDisabledError'
     this.suggestion =
-      "To enable write operations, set JIRA_ALLOW_WRITES=true in the MCP configuration's env block."
+      "To enable title/description updates, set JIRA_ALLOW_ISSUE_UPDATES=true in the MCP configuration's env block."
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor)
+    }
+  }
+}
+
+export class IssueUpdatePermissionError extends Error {
+  suggestion: string
+
+  constructor(issueIdOrKey: string) {
+    super(
+      `Issue "${issueIdOrKey}" can only be updated by its reporter or assignee.`
+    )
+    this.name = 'IssueUpdatePermissionError'
+    this.suggestion =
+      'Ask the reporter or assignee to make the change, or have a Jira admin update the issue assignment/reportership first.'
 
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, this.constructor)

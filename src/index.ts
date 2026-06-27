@@ -46,6 +46,7 @@ import {
   GetCurrentUserSchema,
   SearchIssuesSchema,
   GetIssueSchema,
+  UpdateIssueTextSchema,
   GetIssueTransitionsSchema,
   GetIssueChangelogSchema,
   GetIssueCommentsSchema,
@@ -78,6 +79,7 @@ import {
   ListWorkflowsSchema,
   GetIssueLinksSchema,
 } from './schemas.js'
+import { handleUpdateIssueText } from './handlers/issue-update.js'
 import {
   handleSearchIssues,
   handleSearchJql,
@@ -230,7 +232,7 @@ async function runServer() {
     executeHandler(handleGetCurrentUser)
   )
 
-  // --- Issues (8) ---
+  // --- Issues (8 read + 1 scoped update) ---
 
   server.registerTool(
     'jira_search_issues',
@@ -263,6 +265,17 @@ async function runServer() {
       inputSchema: GetIssueSchema,
     },
     executeHandler(handleGetIssue)
+  )
+
+  server.registerTool(
+    'jira_update_issue_text',
+    {
+      title: 'Update issue title/description',
+      description:
+        'Update only an issue title (Jira summary) and/or plain-text description. This is not a general write tool: it requires `JIRA_ALLOW_ISSUE_UPDATES=true`, reads `/rest/api/3/myself` and the issue reporter/assignee first, and only sends PUT `/rest/api/3/issue/{issueIdOrKey}` if the authenticated account is the reporter or assignee.',
+      inputSchema: UpdateIssueTextSchema,
+    },
+    executeHandler(handleUpdateIssueText)
   )
 
   server.registerTool(
