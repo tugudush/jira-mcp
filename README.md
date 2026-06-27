@@ -100,6 +100,25 @@ Or via npx (no global install):
 }
 ```
 
+Or from a local build (after `npm install && npm run build`):
+
+```jsonc
+{
+  "servers": {
+    "jira-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/path/to/jira-mcp/dist/index.js"],
+      "env": {
+        "JIRA_BASE_URL": "https://your-domain.atlassian.net",
+        "JIRA_EMAIL": "your@email.com",
+        "JIRA_API_TOKEN": "your-api-token",
+      },
+    },
+  },
+}
+```
+
 > Tip: paste the actual values in the `env` block. If you don't want to commit secrets, keep `.vscode/mcp.json` in your global gitignore.
 
 ---
