@@ -1,0 +1,21 @@
+# Atlassian Jira defaults for jira-mcp
+
+When connected to `jira-mcp` in this project:
+
+- **MUST** use Jira project key = `YOURPROJ` (do not call `jira_list_projects`
+  to discover it — we know it's `YOURPROJ`).
+- **MUST** use `maxResults: 10` (or `limit: 10`) for ALL Jira JQL search calls
+  to stay under the model's context window.
+- **MUST** prefer `/rest/api/3/search/jql` — the older `/rest/api/3/search` is
+  deprecated.
+- **MUST** format responses as TOON (`output_format=toon`) for any list of > 5
+  issues; use `text` only for single-issue summaries.
+- **SHOULD** prefer `output_format=text` for single-issue summaries so the
+  response renders nicely as markdown.
+- **SHOULD** include `fields=summary,status,assignee,reporter,priority,updated`
+  on `jira_get_issue` calls unless the user explicitly asks for more fields.
+- **MUST NOT** call `jira_update_issue_text` unless the user explicitly asks
+  to update an issue's title or description, and only after confirming the
+  authenticated account is the issue reporter or assignee.
+- **MUST** report the Jira base URL (`https://your-domain.atlassian.net`) when
+  the user asks for a link to an issue.
