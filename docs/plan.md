@@ -6,7 +6,7 @@
 > ✅ **Phase 2** done (Issues & Projects: 8 issue tools, 5 project tools, full schemas and unit/mocked testing)
 > ✅ **Phase 3** done (Agile, Users, Filters, Fields: 7 board/sprint tools, 4 user tools, 3 filter tools, 3 field tools)
 > ✅ **Phase 4** done (Dashboards, Workflows, Links, Watchers: 2 dashboard tools, 2 workflow tools, 1 link tool, 1 watcher tool; `jira_get_issue_watchers` refactored out of `issue.ts`)
-> ⏭️ **Phase 5** next — Write Operations, opt-in (`makeWriteRequest` + 8 write tools gated by `JIRA_ALLOW_WRITES`)
+> 🚧 **Phase 5** in progress — Scoped Issue Text Update (`makeIssueUpdateRequest` + `jira_update_issue_text` gated by `JIRA_ALLOW_ISSUE_UPDATES` and reporter/assignee identity check)
 > See [Progress Log](#progress-log) for the running record and §9 for the full phased plan.
 
 ---
@@ -28,20 +28,21 @@
 
 ## 2. Goals
 
-| #   | Goal                                                                                                                      | Notes                                                                                                                                                           |
-| --- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G1  | Ship a read-only-by-default MCP server in v1.0 with **opt-in writes**                                                     | Reads always on; writes enabled per-install via `JIRA_ALLOW_WRITES=true` in the MCP config `env` block. Inspired by `bitbucket-mcp`'s posture but configurable. |
-| G2  | Cover the most-used Jira surfaces: issues, projects, search/JQL, comments, agile (boards/sprints), users, filters, fields | ~40+ tools, comparable to bitbucket-mcp's 38                                                                                                                    |
-| G3  | Re-use the same auth model as bitbucket-mcp                                                                               | Basic Auth `email:api_token` base64-encoded                                                                                                                     |
-| G4  | Re-use the same output / filtering features                                                                               | `text` / `json` / `toon` formats + JMESPath `filter`                                                                                                            |
-| G5  | Build on the **modern 2026 dev stack** from `tugudush/video-context-mcp`                                                  | ESM, TS 6, Vitest, Zod 4, ESLint 10 flat config, modern MCP SDK `McpServer.registerTool` API                                                                    |
-| G6  | Be installable the same way                                                                                               | `npm i -g @tugudush/jira-mcp` + `npx @tugudush/jira-mcp`                                                                                                        |
+| #   | Goal                                                                                                                      | Notes                                                                                                                                                                              |
+| --- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | Ship a read-only-by-default MCP server in v1.0 with one **opt-in scoped issue text update**                               | Reads always on; only `jira_update_issue_text` can mutate Jira, and only with `JIRA_ALLOW_ISSUE_UPDATES=true` plus a reporter/assignee account check. No broad write mode in v1.0. |
+| G2  | Cover the most-used Jira surfaces: issues, projects, search/JQL, comments, agile (boards/sprints), users, filters, fields | ~40+ tools, comparable to bitbucket-mcp's 38                                                                                                                                       |
+| G3  | Re-use the same auth model as bitbucket-mcp                                                                               | Basic Auth `email:api_token` base64-encoded                                                                                                                                        |
+| G4  | Re-use the same output / filtering features                                                                               | `text` / `json` / `toon` formats + JMESPath `filter`                                                                                                                               |
+| G5  | Build on the **modern 2026 dev stack** from `tugudush/video-context-mcp`                                                  | ESM, TS 6, Vitest, Zod 4, ESLint 10 flat config, modern MCP SDK `McpServer.registerTool` API                                                                                       |
+| G6  | Be installable the same way                                                                                               | `npm i -g @tugudush/jira-mcp` + `npx @tugudush/jira-mcp`                                                                                                                           |
 
 ### Non-goals (v1.0)
 
 - No OAuth 2.0 (3LO) flow — email + API token is enough.
 - No on-prem / Jira Data Center support — Jira Cloud only.
 - No webhook listeners / push events.
+- No general Jira write surface — v1.0 only permits scoped issue title/description updates.
 - No board / sprint mutation (creating sprints, moving issues between sprints) — see §9.
 - No startup network calls (no auto update-check, no license server). Pure offline + on-demand.
 
@@ -185,7 +186,7 @@ Mirrors `bitbucket-mcp`:
 JIRA_BASE_URL       = https://your-domain.atlassian.net   (Cloud site URL, no trailing slash)
 JIRA_EMAIL          = your@email.com
 JIRA_API_TOKEN      = <API token from https://id.atlassian.com/manage-profile/security/api-tokens>
-JIRA_ALLOW_WRITES   = true|false   (optional, default false — opt-in for v1.0 write tools)
+JIRA_ALLOW_ISSUE_UPDATES = true|false   (optional, default false — opt-in for jira_update_issue_text only)
 JIRA_DEBUG          = true|false   (optional, default false)
 JIRA_DEFAULT_FORMAT = text|json|toon   (optional, default text)
 JIRA_REQUEST_TIMEOUT_MS = 30000   (optional, default 30000 — per-request timeout in milliseconds)
@@ -196,8 +197,11 @@ JIRA_REQUEST_TIMEOUT_MS = 30000   (optional, default 30000 — per-request timeo
 - All requests go to `JIRA_BASE_URL/rest/api/3/...` (core) or
   `JIRA_BASE_URL/rest/agile/1.0/...` (agile).
 - No secrets are logged. `JIRA_DEBUG=true` only logs URLs + status codes.
-- `JIRA_ALLOW_WRITES=false` (default) → `makeWriteRequest()` rejects with a
-  descriptive error and tells the user which env var to set.
+- `JIRA_ALLOW_ISSUE_UPDATES=false` (default) → `makeIssueUpdateRequest()` rejects
+  with a descriptive error and tells the user which env var to set.
+- Even when `JIRA_ALLOW_ISSUE_UPDATES=true`, the update handler first fetches
+  `/rest/api/3/myself` and the target issue's `reporter` / `assignee`, then only
+  proceeds if the authenticated account ID matches one of them.
 
 ## 5. Architecture
 
@@ -208,8 +212,8 @@ Same **domain-handler / registry** pattern as `bitbucket-mcp`, but using the
 src/
 ├── index.ts                    # McpServer bootstrap (StdioServerTransport) + registerTool calls
 ├── config.ts                   # env loading + validation (Zod)
-├── api.ts                      # makeRequest() (GET) + makeWriteRequest() (POST/PUT/DELETE) + retry
-├── errors.ts                   # JiraError, AuthError, RateLimitError, WriteDisabledError, …
+├── api.ts                      # makeRequest() (GET + read-only POST search) + makeIssueUpdateRequest() (PUT issue text only) + retry
+├── errors.ts                   # JiraError, AuthError, RateLimitError, IssueUpdateDisabledError, IssueUpdatePermissionError, …
 ├── types.ts                    # Jira Cloud API TypeScript interfaces
 ├── schemas.ts                  # Zod input schemas for every tool
 ├── tools.ts                    # Tool registry: id → { schema, handler, format }
@@ -223,6 +227,7 @@ src/
 │   └── jmespath.ts             # filter expression evaluator
 ├── handlers/
 │   ├── issue.ts                # search, get, transitions, comments, worklogs
+│   ├── issue-update.ts         # opt-in: update title/description only when reporter/assignee
 │   ├── project.ts              # list, get, components, versions
 │   ├── agile.ts                # boards, sprints, backlog
 │   ├── user.ts                 # current user, search, assignable
@@ -231,8 +236,7 @@ src/
 │   ├── dashboard.ts            # dashboards + items
 │   ├── workflow.ts             # statuses + workflows
 │   ├── link.ts                 # issue links
-│   ├── watcher.ts              # watchers
-│   └── write.ts                # opt-in: create/update/assign/transition/comment/worklog
+│   └── watcher.ts              # watchers
 └── scripts/                    # (root-level, not in src/) sync-version.ts etc.
 ```
 
@@ -269,7 +273,7 @@ await server.connect(transport)
 - `filter` param on every tool: JMESPath expression
 - `JIRA_DEFAULT_FORMAT` env var for global default
 - `JIRA_DEBUG=true` for verbose stderr logging
-- `JIRA_ALLOW_WRITES` env var gates every write tool (default: writes disabled)
+- `JIRA_ALLOW_ISSUE_UPDATES` env var gates the single scoped issue text update tool (default: disabled)
 - **🆕 Response truncation with raw file logging** (UX1, aashari) — see §3.7
 - **🆕 Every tool's `description` string teaches usage** (UX3, aashari) — e.g.
   `jira_search_issues.description` starts with _"Run a JQL query. **Use
@@ -277,9 +281,10 @@ await server.connect(transport)
 
 ## 6. Tool Surface (v1.0)
 
-**43 tools total** across 10 categories. Naming convention: `jira_*` (matches
-`bb_*` pattern from bitbucket-mcp). Read tools are always available; write
-tools (§5.10) require `JIRA_ALLOW_WRITES=true`.
+**36 tools total**: 35 read tools across 10 read categories, plus one scoped
+issue text update tool. Naming convention: `jira_*` (matches `bb_*` pattern
+from bitbucket-mcp). Read tools are always available; the scoped update (§5.10)
+requires `JIRA_ALLOW_ISSUE_UPDATES=true` and a reporter/assignee identity match.
 
 ### 5.1 Issues (8)
 
@@ -361,23 +366,18 @@ tools (§5.10) require `JIRA_ALLOW_WRITES=true`.
 | ---------------------- | ----------------------------------- |
 | `jira_get_issue_links` | Outward + inward links for an issue |
 
-### 5.10 Write Operations — **opt-in, `JIRA_ALLOW_WRITES=true`** (8)
+### 5.10 Scoped Issue Text Update — **opt-in, `JIRA_ALLOW_ISSUE_UPDATES=true`** (1)
 
-Disabled by default. Each tool returns a clear error pointing to the env var
-when the flag is off, so the model can recover without guessing.
+Disabled by default. This is not a general write mode. The tool can only update
+an issue's title (Jira `summary`) and plain-text description, and only after the
+server proves the authenticated Jira account is either the issue reporter or
+assignee.
 
-| Tool                    | Method                                        | Description                                            |
-| ----------------------- | --------------------------------------------- | ------------------------------------------------------ |
-| `jira_create_issue`     | POST `/rest/api/3/issue`                      | Create a new issue (project, type, summary, …)         |
-| `jira_update_issue`     | PUT `/rest/api/3/issue/{key}`                 | Edit fields on an existing issue                       |
-| `jira_assign_issue`     | PUT `/rest/api/3/issue/{key}/assignee`        | Assign to a user (or unassign with `null`)             |
-| `jira_transition_issue` | POST `/rest/api/3/issue/{key}/transitions`    | Move issue through workflow (e.g. To Do → In Progress) |
-| `jira_add_comment`      | POST `/rest/api/3/issue/{key}/comment`        | Add a comment (ADF body)                               |
-| `jira_update_comment`   | PUT `/rest/api/3/issue/{key}/comment/{id}`    | Edit an existing comment                               |
-| `jira_delete_comment`   | DELETE `/rest/api/3/issue/{key}/comment/{id}` | Remove a comment                                       |
-| `jira_add_worklog`      | POST `/rest/api/3/issue/{key}/worklog`        | Log time against an issue                              |
+| Tool                     | Method                        | Description                                                                                                |
+| ------------------------ | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `jira_update_issue_text` | PUT `/rest/api/3/issue/{key}` | Update title (`summary`) and/or plain-text description. Fetches `/myself` + issue reporter/assignee first. |
 
-**Total: 35 read + 8 write = 43 tools** across 10 categories.
+**Total: 35 read + 1 scoped update = 36 tools**.
 
 ## 7. Project Structure & Tooling
 
@@ -560,18 +560,20 @@ into the consumer repo and how the model picks it up automatically.
 - [x] `handlers/watcher.ts` — 1 tool (`jira_get_issue_watchers` moved out of `issue.ts`)
 - [x] Unit + integration tests
 
-### Phase 5 — Write Operations, opt-in (1 day)
+### Phase 5 — Scoped Issue Text Update, opt-in (1 day)
 
-- [ ] `api.ts` — `makeWriteRequest()` guarded by `JIRA_ALLOW_WRITES`
-- [ ] `errors.ts` — `WriteDisabledError` with actionable message
-- [ ] `handlers/write.ts` — 8 tools (create/update/assign/transition/comment/create+update+delete/worklog)
-- [ ] Unit tests for the disabled-by-default behavior
-- [ ] Integration tests against a sandbox project with `JIRA_ALLOW_WRITES=true`
-- [ ] README — explicit section on enabling writes + token-scope guidance
+- [x] `config.ts` — replace broad `JIRA_ALLOW_WRITES` with scoped `JIRA_ALLOW_ISSUE_UPDATES`
+- [x] `api.ts` — replace broad `makeWriteRequest()` with `makeIssueUpdateRequest()` restricted to PUT `/rest/api/3/issue/{key}`
+- [x] `errors.ts` — `IssueUpdateDisabledError` and `IssueUpdatePermissionError` with actionable messages
+- [x] `handlers/issue-update.ts` — `jira_update_issue_text` for title (`summary`) and plain-text description only
+- [x] `schemas.ts` + `index.ts` — input schema and MCP registration
+- [x] Unit tests for disabled-by-default behavior and reporter/assignee enforcement
+- [ ] Integration test against a sandbox project with `JIRA_ALLOW_ISSUE_UPDATES=true`
+- [x] README — explicit section on enabling scoped issue updates + token-scope guidance
 
 ### Phase 6 — Polish & Release (1 day)
 
-- [ ] Full integration test sweep (target: 43/43 tools)
+- [ ] Full integration test sweep (target: 36/36 tools)
 - [ ] README with usage examples, troubleshooting, "Enabling writes" section
 - [ ] `docs/agents-guide.md` + `docs/AGENTS.md.example` (UX4)
 - [ ] `PUBLISHING.md` walkthrough
@@ -593,9 +595,12 @@ into the consumer repo and how the model picks it up automatically.
 
 ## 11. Security Posture
 
-- ✅ **Read-only by default** — `makeWriteRequest()` checks `JIRA_ALLOW_WRITES`
-  and throws `WriteDisabledError` with a clear fix-it message when writes are
-  attempted while the flag is off.
+- ✅ **Read-only by default** — `makeIssueUpdateRequest()` checks
+  `JIRA_ALLOW_ISSUE_UPDATES` and throws `IssueUpdateDisabledError` with a clear
+  fix-it message when scoped issue updates are attempted while the flag is off.
+- ✅ **No broad write mode** — the only permitted mutation is PUT
+  `/rest/api/3/issue/{key}` from `jira_update_issue_text`, and the handler only
+  sends `summary` and/or `description` after a reporter/assignee account-ID check.
 - ✅ Auth via Basic header constructed in memory; never logged.
 - ✅ `JIRA_DEBUG` logs URLs and status codes only — no bodies, no headers.
 - ✅ Zod 4 validation on every tool input.
@@ -605,14 +610,15 @@ into the consumer repo and how the model picks it up automatically.
   exponential backoff; no custom client-side throttling in v1.0.
 - ⚠️ API tokens inherit the user's permissions. Document clearly that
   read-only installs should use a **Jira → Read** scoped token; installs with
-  `JIRA_ALLOW_WRITES=true` should use a **Jira → Read & Write** scoped token
-  from a service account.
+  `JIRA_ALLOW_ISSUE_UPDATES=true` need permission to edit issues, but the server
+  still refuses updates unless the authenticated user is the reporter or assignee.
 
 ## 12. Resolved Decisions
 
-1. ✅ **Reads default, writes opt-in** — `JIRA_ALLOW_WRITES=true` in the MCP
-   config's `env` block enables the 8 write tools. Keeps the safe default,
-   makes writes available per-install.
+1. ✅ **Reads default, one scoped update opt-in** — `JIRA_ALLOW_ISSUE_UPDATES=true`
+   in the MCP config's `env` block enables only `jira_update_issue_text`. The
+   server does not expose create/assign/transition/comment/worklog mutation tools
+   in v1.0.
 2. ✅ **Agile coverage** — ship all 7 board/sprint tools.
 3. ✅ **JQL endpoint** — use the new `/rest/api/3/search/jql` (POST).
 4. ✅ **Pagination** — default 50, max 100.
@@ -699,8 +705,8 @@ nothing to commit, working tree clean
 
 **What landed** (14 files added/updated, ~1,500 lines)
 
-- `src/config.ts` — Loads and validates all required configuration parameters (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`) and options (`JIRA_ALLOW_WRITES`, `JIRA_DEBUG`, `JIRA_DEFAULT_FORMAT`, `JIRA_REQUEST_TIMEOUT_MS`) with full Zod validation and robust defaults.
-- `src/errors.ts` — Implements explicit TS custom error hierarchies (`JiraApiError`, `AuthenticationError`, `ForbiddenError`, `NotFoundError`, `RateLimitError`, `WriteDisabledError`) with safe parsing and extraction of diverse Jira REST API error messages.
+- `src/config.ts` — Loads and validates all required configuration parameters (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`) and options (`JIRA_ALLOW_ISSUE_UPDATES`, `JIRA_DEBUG`, `JIRA_DEFAULT_FORMAT`, `JIRA_REQUEST_TIMEOUT_MS`) with full Zod validation and robust defaults.
+- `src/errors.ts` — Implements explicit TS custom error hierarchies (`JiraApiError`, `AuthenticationError`, `ForbiddenError`, `NotFoundError`, `RateLimitError`, `IssueUpdateDisabledError`) with safe parsing and extraction of diverse Jira REST API error messages.
 - `src/api.ts` — Outlines central, robust, highly modular network layer fetching with native global `fetch()`. Contains exponential backoff retry cycles on transient errors (like `429` / `5xx` / network cuts), abortable request-timeouts (default 30s as UX2), and strict write protection on mutation attempts.
 - `src/formatters/` — Custom, clean format engines mapping output results into `text` (human readable summary), `json` (pretty-printed 2-space structured blocks), or `toon` (ultra compact tabular format reducing context consumption by 30-60%).
 - `src/filters/jmespath.ts` — Exposes evaluation pipeline that runs query transformation on loaded JSON arrays/objects using JMESPath, working seamlessly with format select inputs.

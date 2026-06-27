@@ -96,6 +96,30 @@ export const GetIssueSchema = withOutputOptions(
 )
 
 /**
+ * Schema for jira_update_issue_text
+ */
+export const UpdateIssueTextSchema = withOutputOptions(
+  z.object({
+    issueIdOrKey: z
+      .string()
+      .describe(
+        "The complete key (e.g., 'PROJ-123') or the numerical ID of the issue"
+      ),
+    title: z
+      .string()
+      .min(1)
+      .optional()
+      .describe('New issue title. Jira stores this as the summary field.'),
+    description: z
+      .string()
+      .optional()
+      .describe(
+        'New plain-text issue description. It is converted to Atlassian Document Format before sending to Jira.'
+      ),
+  })
+)
+
+/**
  * Schema for jira_get_issue_transitions
  */
 export const GetIssueTransitionsSchema = withOutputOptions(

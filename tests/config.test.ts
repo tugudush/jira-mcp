@@ -9,7 +9,7 @@ describe('config.ts unit tests', () => {
     delete process.env.JIRA_BASE_URL
     delete process.env.JIRA_EMAIL
     delete process.env.JIRA_API_TOKEN
-    delete process.env.JIRA_ALLOW_WRITES
+    delete process.env.JIRA_ALLOW_ISSUE_UPDATES
     delete process.env.JIRA_DEBUG
     delete process.env.JIRA_DEFAULT_FORMAT
     delete process.env.JIRA_REQUEST_TIMEOUT_MS
@@ -41,7 +41,7 @@ describe('config.ts unit tests', () => {
     process.env.JIRA_BASE_URL = 'https://my-jira.atlassian.net/'
     process.env.JIRA_EMAIL = 'test@example.com'
     process.env.JIRA_API_TOKEN = 'apitoken'
-    process.env.JIRA_ALLOW_WRITES = 'true'
+    process.env.JIRA_ALLOW_ISSUE_UPDATES = 'true'
     process.env.JIRA_DEBUG = 'true'
     process.env.JIRA_DEFAULT_FORMAT = 'toon'
     process.env.JIRA_REQUEST_TIMEOUT_MS = '15000'
@@ -52,7 +52,7 @@ describe('config.ts unit tests', () => {
     expect(cfg.JIRA_BASE_URL).toBe('https://my-jira.atlassian.net')
     expect(cfg.JIRA_EMAIL).toBe('test@example.com')
     expect(cfg.JIRA_API_TOKEN).toBe('apitoken')
-    expect(cfg.JIRA_ALLOW_WRITES).toBe(true)
+    expect(cfg.JIRA_ALLOW_ISSUE_UPDATES).toBe(true)
     expect(cfg.JIRA_DEBUG).toBe(true)
     expect(cfg.JIRA_DEFAULT_FORMAT).toBe('toon')
     expect(cfg.JIRA_REQUEST_TIMEOUT_MS).toBe(15000)
@@ -65,7 +65,7 @@ describe('config.ts unit tests', () => {
 
     const cfg = loadConfig()
 
-    expect(cfg.JIRA_ALLOW_WRITES).toBe(false)
+    expect(cfg.JIRA_ALLOW_ISSUE_UPDATES).toBe(false)
     expect(cfg.JIRA_DEBUG).toBe(false)
     expect(cfg.JIRA_DEFAULT_FORMAT).toBe('text')
     expect(cfg.JIRA_REQUEST_TIMEOUT_MS).toBe(30000)

@@ -3,7 +3,11 @@
  */
 
 import { loadConfig } from './config.js'
-import { createApiError, JiraApiError, WriteDisabledError } from './errors.js'
+import {
+  createApiError,
+  JiraApiError,
+  IssueUpdateDisabledError,
+} from './errors.js'
 import { VERSION } from './generated/version.js'
 
 // Sleep helper
@@ -215,7 +219,7 @@ export async function makeRequest<T = unknown>(
   const method = (options.method || 'GET').toString().toUpperCase()
   if (method !== 'GET' && !(method === 'POST' && url.includes('/search'))) {
     throw new Error(
-      `Only GET requests are allowed in makeRequest. Use makeWriteRequest for mutations.`
+      `Only GET requests are allowed in makeRequest. Use makeIssueUpdateRequest for scoped title/description updates.`
     )
   }
 
@@ -288,23 +292,34 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
 }
 
 /**
- * Make an authenticated WRITE request (POST/PUT/DELETE) returning typed JSON data.
- * Guarded by JIRA_ALLOW_WRITES check.
+ * Check that a URL points at the one Jira update endpoint this server permits.
  */
-export async function makeWriteRequest<T = unknown>(
+function isIssueUpdateUrl(url: string): boolean {
+  try {
+    const path = new URL(url).pathname
+    return /^\/rest\/api\/3\/issue\/[^/]+$/.test(path)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Make the only permitted mutation: PUT issue summary/description updates.
+ * Guarded by JIRA_ALLOW_ISSUE_UPDATES and restricted to /issue/{key}.
+ */
+export async function makeIssueUpdateRequest<T = unknown>(
   url: string,
-  toolName: string,
   options: RequestInit = {}
 ): Promise<T> {
   const config = loadConfig()
-  if (!config.JIRA_ALLOW_WRITES) {
-    throw new WriteDisabledError(toolName)
+  if (!config.JIRA_ALLOW_ISSUE_UPDATES) {
+    throw new IssueUpdateDisabledError()
   }
 
-  const method = (options.method || 'POST').toString().toUpperCase()
-  if (method === 'GET') {
+  const method = (options.method || 'PUT').toString().toUpperCase()
+  if (method !== 'PUT' || !isIssueUpdateUrl(url)) {
     throw new Error(
-      `GET requests should use makeRequest, not makeWriteRequest.`
+      'makeIssueUpdateRequest only supports PUT /rest/api/3/issue/{issueIdOrKey}.'
     )
   }
 

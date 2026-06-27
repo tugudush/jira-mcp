@@ -6,10 +6,10 @@ import {
   buildRequestHeaders,
   makeRequest,
   makeTextRequest,
-  makeWriteRequest,
+  makeIssueUpdateRequest,
 } from '../src/api.js'
 import { resetConfig } from '../src/config.js'
-import { WriteDisabledError } from '../src/errors.js'
+import { IssueUpdateDisabledError } from '../src/errors.js'
 
 describe('api.ts unit tests', () => {
   const originalEnv = { ...process.env }
@@ -22,7 +22,7 @@ describe('api.ts unit tests', () => {
     process.env.JIRA_BASE_URL = 'https://example-jira.atlassian.net'
     process.env.JIRA_EMAIL = 'user@example.com'
     process.env.JIRA_API_TOKEN = 'testtoken'
-    process.env.JIRA_ALLOW_WRITES = 'false'
+    process.env.JIRA_ALLOW_ISSUE_UPDATES = 'false'
     process.env.JIRA_DEBUG = 'false'
     process.env.JIRA_REQUEST_TIMEOUT_MS = '1000'
 
@@ -103,39 +103,50 @@ describe('api.ts unit tests', () => {
     })
   })
 
-  describe('makeWriteRequest', () => {
-    it('throws WriteDisabledError if JIRA_ALLOW_WRITES is false', async () => {
+  describe('makeIssueUpdateRequest', () => {
+    it('throws IssueUpdateDisabledError if issue updates are disabled', async () => {
       await expect(
-        makeWriteRequest(
-          'https://example-jira.atlassian.net/rest/api/3/issue',
-          'jira_create_issue'
+        makeIssueUpdateRequest(
+          'https://example-jira.atlassian.net/rest/api/3/issue/PROJ-123'
         )
-      ).rejects.toThrow(WriteDisabledError)
+      ).rejects.toThrow(IssueUpdateDisabledError)
     })
 
-    it('succeeds if JIRA_ALLOW_WRITES is true', async () => {
-      process.env.JIRA_ALLOW_WRITES = 'true'
+    it('succeeds for issue PUT if scoped updates are enabled', async () => {
+      process.env.JIRA_ALLOW_ISSUE_UPDATES = 'true'
       resetConfig()
 
-      const mockBody = { key: 'PROJ-123' }
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        status: 201,
-        statusText: 'Created',
+        status: 204,
+        statusText: 'No Content',
         headers: new Headers({ 'content-type': 'application/json' }),
-        json: async () => mockBody,
       })
 
-      const res = await makeWriteRequest(
-        'https://example-jira.atlassian.net/rest/api/3/issue',
-        'jira_create_issue',
+      const res = await makeIssueUpdateRequest(
+        'https://example-jira.atlassian.net/rest/api/3/issue/PROJ-123',
         {
-          method: 'POST',
+          method: 'PUT',
           body: JSON.stringify({ summary: 'test' }),
         }
       )
 
-      expect(res).toEqual(mockBody)
+      expect(res).toEqual({})
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('rejects non-issue-update mutations even when enabled', async () => {
+      process.env.JIRA_ALLOW_ISSUE_UPDATES = 'true'
+      resetConfig()
+
+      await expect(
+        makeIssueUpdateRequest(
+          'https://example-jira.atlassian.net/rest/api/3/issue/PROJ-123/comment',
+          { method: 'POST' }
+        )
+      ).rejects.toThrow(
+        'makeIssueUpdateRequest only supports PUT /rest/api/3/issue/{issueIdOrKey}.'
+      )
     })
   })
 })
