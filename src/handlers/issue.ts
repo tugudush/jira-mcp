@@ -179,8 +179,7 @@ function formatSearchResultIssueSimple(issue: IssueData): string {
     'Unknown'
   const assignee =
     (getFieldProp(issue.fields, 'assignee', 'displayName') as
-      | string
-      | undefined) ?? 'Unassigned'
+      string | undefined) ?? 'Unassigned'
   return `- [${key}] ${summary} (Status: ${status}, Assignee: ${assignee})`
 }
 
