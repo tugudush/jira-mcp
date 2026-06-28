@@ -1,6 +1,6 @@
 {
   "name": "@tugudush/jira-mcp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A focused, Jira-only Model Context Protocol server with bitbucket-mcp-grade developer ergonomics. Works today — no OAuth admin gating required.",
   "type": "module",
   "main": "dist/index.js",
@@ -28,6 +28,7 @@
     "test:coverage": "vitest run --coverage",
     "ltfb": "npm run lint && npm run type-check && npm run format && npm run build",
     "start": "node dist/index.js",
+    "phase5:smoke": "tsx scripts/phase5-smoke.ts",
     "prepare": "husky"
   },
   "keywords": [

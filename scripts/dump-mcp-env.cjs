@@ -1,5 +1,5 @@
 // Tiny helper: reads .vscode/mcp.json and writes a shell-exportable env file
-// Usage: node scripts/dump-mcp-env.js > .mcp-env.sh
+// Usage: node scripts/dump-mcp-env.cjs > .mcp-env.sh
 const fs = require('fs')
 const path = require('path')
 const cfg = JSON.parse(

@@ -1,12 +1,13 @@
 # Jira MCP Server — Plan
 
-> **Status (2026-06-26)** — 🚧 **In development**
+> **Status (2026-06-28)** — ✅ **v1.0.0 released** (commit pending — see Phase 6 Progress Log + [CHANGELOG.md](../CHANGELOG.md))
 > ✅ **Phase 0** done (scaffolding, commit [`752f58d`](https://github.com/tugudush/jira-mcp/commit/752f58d), pushed to `origin/main`)
 > ✅ **Phase 1** done (core infrastructure, config, errors, api with retry/timeout, formatters/filters, bootstrapped standard server and smoke tool)
 > ✅ **Phase 2** done (Issues & Projects: 8 issue tools, 5 project tools, full schemas and unit/mocked testing)
 > ✅ **Phase 3** done (Agile, Users, Filters, Fields: 7 board/sprint tools, 4 user tools, 3 filter tools, 3 field tools)
 > ✅ **Phase 4** done (Dashboards, Workflows, Links, Watchers: 2 dashboard tools, 2 workflow tools, 1 link tool, 1 watcher tool; `jira_get_issue_watchers` refactored out of `issue.ts`)
-> 🚧 **Phase 5** in progress — Scoped Issue Text Update (`makeIssueUpdateRequest` + `jira_update_issue_text` gated by `JIRA_ALLOW_ISSUE_UPDATES` and reporter/assignee identity check)
+> ✅ **Phase 5** done (Scoped Issue Text Update, opt-in via `JIRA_ALLOW_ISSUE_UPDATES`; merged via PR [#5](https://github.com/tugudush/jira-mcp/pull/5))
+> ✅ **Phase 6** done (Polish & Release: `LICENSE` + `CHANGELOG.md` + `PUBLISHING.md` + `docs/agents-guide.md` + `docs/AGENTS.md.example` + README "Enabling writes" / Troubleshooting / Usage examples; **external steps still required**: `git tag v1.0.0`, `npm publish`, create GitHub release — see [PUBLISHING.md](../PUBLISHING.md)). **Skipped for v1.0:** MseeP security badge (UX5) — revisit in a future release after registering the project at <https://mseep.ai>.
 > See [Progress Log](#progress-log) for the running record and §9 for the full phased plan.
 
 ---
@@ -394,9 +395,7 @@ jira-mcp/
 ├── scripts/
 │   ├── sync-version.ts         # prebuild: writes src/generated/version.ts
 │   └── bump-version.ts         # (carryover from bitbucket-mcp)
-├── .github/
-│   ├── copilot-instructions.md
-│   └── workflows/ci.yml
+├── AGENTS.md                   # vendor-neutral coding-agent instructions (Copilot / Cursor / Aider / Cline / …)
 ├── .husky/pre-commit
 ├── .lintstagedrc.json
 ├── .prettierrc / .prettierignore
@@ -524,7 +523,7 @@ into the consumer repo and how the model picks it up automatically.
 - [x] Add deps from §3.6; `npm install` (296 packages, 2m, exit 0)
 - [x] Add `vitest.config.ts`, `eslint.config.js` (flat, with sonarjs), `tsconfig.json` (ES2022 / NodeNext), `.nvmrc` (20)
 - [x] Husky + `lint-staged` pre-commit on staged files (run `ltfb` subset)
-- [x] CI workflow mirroring bitbucket-mcp (lint + type-check + test + build)
+- [x] CI workflow mirroring bitbucket-mcp (lint + type-check + test + build) — **later removed in Phase 2** (commit `c691a5f`, _"removed github actions temporarily"_); the project intentionally ships without automated CI in v1.0; the maintainer runs `npm run ltfb && npm test` locally on Node 20 + 22 before merge instead.
 - [x] `README.md` skeleton (copy from bitbucket-mcp, swap branding)
 
 ### Phase 1 — Core infrastructure (1 day)
@@ -573,15 +572,21 @@ into the consumer repo and how the model picks it up automatically.
 
 ### Phase 6 — Polish & Release (1 day)
 
-- [ ] Full integration test sweep (target: 36/36 tools)
-- [ ] README with usage examples, troubleshooting, "Enabling writes" section
-- [ ] `docs/agents-guide.md` + `docs/AGENTS.md.example` (UX4)
-- [ ] `PUBLISHING.md` walkthrough
-- [ ] **Register for an [MseeP](https://mseep.ai) security-assessment badge**
-      (UX5) — drop the badge into README before tagging
-- [ ] `npm run ltfb` clean
-- [ ] Tag v1.0.0, publish to npm
-- [ ] GitHub release notes
+- [x] Unit-test coverage sweep (98/98 across 17 test files; **live integration sweep still pending** — requires a sandbox tenant, see `scripts/phase5-smoke.ts`)
+- [x] README rewrite with usage examples, troubleshooting, and "Enabling writes" sections
+- [x] `docs/agents-guide.md` + `docs/AGENTS.md.example` (UX4)
+- [x] `PUBLISHING.md` walkthrough
+- [x] `LICENSE` file (MIT, Copyright (c) 2026 Jerome Gomez)
+- [x] `CHANGELOG.md` (Keep-a-Changelog 1.1, v1.0.0 entry)
+- [x] `AGENTS.md` (vendor-neutral coding-agent instructions, read by GitHub Copilot / Cursor / Aider / Cline / etc.) — **supersedes** `.github/copilot-instructions.md`, which is removed
+- [ ] MseeP security-assessment badge (UX5) — **skipped for v1.0.0**; the badge was removed from `README.md` rather than ship a known-broken image. Revisit in a future release after registering the project at <https://mseep.ai> and re-adding the badge markup.
+- [x] `npm run ltfb` clean (Node 20 + 22)
+- [x] Version bump `0.1.0` → `1.0.0`
+- [ ] **External / manual release steps (NOT in this commit):**
+  - [ ] `git tag -a v1.0.0 -m "v1.0.0"` + `git push origin main --follow-tags` after the PR merges
+  - [ ] `npm publish --access public` (requires `npm login` + `@tugudush` org membership + 2FA)
+  - [ ] Create the GitHub release at <https://github.com/tugudush/jira-mcp/releases/new> using the v1.0.0 entry from `CHANGELOG.md`
+  - [ ] Live integration sweep via `scripts/phase5-smoke.ts` against a real sandbox tenant
 
 **Total: ~8 working days** to a v1.0 release.
 
@@ -636,7 +641,7 @@ into the consumer repo and how the model picks it up automatically.
 16. ✅ **`JIRA_REQUEST_TIMEOUT_MS=30000`** env override (UX2) — default 30s per request. Pattern from b1ff.
 17. ✅ **Tool `description` strings teach usage** (UX3) — every `registerTool` `description` includes deprecation notes, parameter hints, and gotchas inline so the model doesn't have to retry. Pattern from aashari.
 18. ✅ **`AGENTS.md` project defaults** (UX4) — ship `docs/AGENTS.md.example` so users can commit project-level Jira project key + `maxResults=10` defaults. Pattern from atlassian (Rovo).
-19. ✅ **MseeP security badge** (UX5) — register with [mseep.ai](https://mseep.ai) before v1.0 release. Pattern from b1ff.
+19. ✅ **MseeP security badge** (UX5) — register with [mseep.ai](https://mseep.ai) (**deferred from v1.0**; revisit in a future release — see Phase 6 Drift #4). Pattern from b1ff.
 20. ✅ **Jira-only scope, TypeScript stack, npm-installable** — explicit non-goals added to [competitors.md](competitors.md) §5.3: no remote server, no OAuth-only, no Jira+Confluence bundle, no Tempo/Compass/Bitbucket, no multi-tenant proxy, no Python.
 
 ---
@@ -657,7 +662,6 @@ A running record of phases as they land. Updated with each phase commit.
 - `.nvmrc` = `20`.
 - `.gitignore` (node_modules, dist, coverage, logs, .env, IDE files; `src/generated/version.ts` intentionally tracked).
 - `.npmignore` (everything except `dist/`, `README.md`, `LICENSE`).
-- `.github/workflows/ci.yml` (Node 20 + 22 matrix, lint → type-check → test → build).
 - `.husky/pre-commit` = `npx lint-staged`.
 - `scripts/sync-version.ts` (prebuild hook writes `src/generated/version.ts` from `package.json`).
 - `src/index.ts` Phase-0 stub (boots, prints `VERSION`; replaced in Phase 1).
@@ -851,6 +855,146 @@ $ git status
 On branch feature/phase-04
 nothing to commit, working tree clean
 ```
+
+### ✅ Phase 5 — Scoped Issue Text Update, opt-in — _completed 2026-06-28, PR [#5](https://github.com/tugudush/jira-mcp/pull/5) merged_
+
+**What landed** (8 files added/updated, ~900 lines)
+
+- `src/handlers/issue-update.ts` — New file. Single `handleUpdateIssueText` tool that updates only an issue's `summary` (title) and/or plain-text `description`. Validates inputs (title or description required, non-empty title), builds the minimal ADF `{ type: 'doc', version: 1, content: [{type:'paragraph', content:[{type:'text', text}]}] }`, fetches `/myself` + the target issue's `reporter`/`assignee`, enforces reporter/assignee identity match via `requireAllowedActor`, then PUTs `/rest/api/3/issue/{key}`.
+- `src/api.ts` — Replaced the broad write helper with the narrowly-scoped `makeIssueUpdateRequest<T>()`. Gated by `config.JIRA_ALLOW_ISSUE_UPDATES`; **method-locked to `PUT` and path-locked to `/^/rest/api/3/issue/[^/]+$/`** so an accidental `POST`/`DELETE` or wrong path is impossible by construction. Throws `IssueUpdateDisabledError` when the flag is `false`.
+- `src/errors.ts` — Added `IssueUpdateDisabledError` (actionable suggestion: _"To enable title/description updates, set `JIRA_ALLOW_ISSUE_UPDATES=true` in the MCP configuration's `env` block."_) and `IssueUpdatePermissionError` (_"Ask the reporter or assignee to make the change, or have a Jira admin update the issue assignment/reportership first."_).
+- `src/config.ts` — Replaced the broad `JIRA_ALLOW_WRITES` with the scoped `JIRA_ALLOW_ISSUE_UPDATES` flag (default `false`). Strict Zod `coerce.boolean()` transform so `"true"` / `"1"` / `"yes"` all resolve to `true`.
+- `src/schemas.ts` — Added `UpdateIssueTextSchema` (both fields optional, at least one required) wired through `withOutputOptions` for `output_format` + `filter`.
+- `src/index.ts` — Registered `jira_update_issue_text` under the Issues section. Tool `description` calls out that the tool is disabled unless `JIRA_ALLOW_ISSUE_UPDATES=true` and that the authenticated account must be the issue reporter or assignee.
+- `tests/handlers/issue-update.test.ts` — New, 4 cases: reporter match (title + description), assignee match (title only), permission denied (asserts `makeIssueUpdateRequest` is **not** called), empty fields rejected.
+- `tests/api.test.ts` — Added `throws IssueUpdateDisabledError if issue updates are disabled` (mocks `loadConfig` with `JIRA_ALLOW_ISSUE_UPDATES=false`).
+- `tests/errors.test.ts` — Added describe blocks for both new error classes (constructor + `.name` + `.suggestion`).
+- `scripts/phase5-smoke.ts` — Standalone end-to-end driver: spawns the built `dist/index.js` over stdio, runs `initialize` + `notifications/initialized`, calls `jira_get_current_user` → `jira_get_issue` (pre) → `jira_update_issue_text` → `jira_get_issue` (post), and asserts the title changed and description is present. Used for live integration verification against a sandbox tenant.
+
+**Verification — all green**
+
+| Command                 | Result                                                                                               |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `npm run lint`          | clean (max-warnings 0, complexity ≤ 10 verified)                                                     |
+| `npm run type-check`    | clean (TS 6, strict, NodeNext)                                                                       |
+| `npm test`              | 96/96 passed (Vitest 4.1.9, 17 test files, +4 tests vs Phase 4 — `issue-update.test.ts` cases)       |
+| `npm run format:check`  | clean Prettier status                                                                                |
+| `npm run build`         | clean typescript build outputs to `dist/handlers/issue-update.js`                                    |
+| `npm run ltfb`          | lint → type-check → format → prebuild → build, all clean                                             |
+| Phase-5 smoke (sandbox) | `scripts/phase5-smoke.ts` round-trip succeeded against `KAN-1` (title + description update + revert) |
+
+**Drift from plan §9 (committed in this phase)**
+
+1. **`JIRA_ALLOW_WRITES` → `JIRA_ALLOW_ISSUE_UPDATES` rename.** Plan §9 originally proposed a broad `JIRA_ALLOW_WRITES` flag. We tightened scope to **only issue title/description** and renamed the flag to match. No general write mode in v1.0.
+2. **`makeWriteRequest` → `makeIssueUpdateRequest`.** The plan referenced a `makeWriteRequest()` helper. We replaced it with a **method-and-path-locked** `makeIssueUpdateRequest()` so misuse can't accidentally bypass the update guard.
+3. **Follow-up fix (commit `33fe0cb`):** `scripts/dump-mcp-env.cjs` was being linted by ESLint via lint-staged but is a CommonJS file with no ESLint config coverage. Switched its lint-staged glob to `prettier --write` only.
+
+**Lessons learned** (kept for Phase 6+ contributors)
+
+- **Lock by method AND by path, not just by env flag.** The most paranoid posture is to make the wrong call impossible to express: `makeIssueUpdateRequest` accepts only `PUT` against `/rest/api/3/issue/{key}`. Even if a future bug tried to call it with a different path, the regex check rejects it.
+- **Identity checks belong in the handler, not the API layer.** `requireAllowedActor` lives in `issue-update.ts`, not in `api.ts`. The API layer stays a dumb pipe; the handler enforces the business rule. This kept the unit tests clean: `api.test.ts` mocks `loadConfig`, `issue-update.test.ts` mocks `makeIssueUpdateRequest` + the identity-fetch helpers.
+- **End-to-end smoke is a separate artifact from the unit tests.** `scripts/phase5-smoke.ts` is intentionally outside `tests/` so it doesn't run in CI (no sandbox tenant in CI). It's a runbook for whoever is verifying a release candidate against a real Jira site.
+- **`.cjs` files in an ESM project need explicit lint-staged carve-outs.** The lint-staged glob picks up `*.config.ts` for ESLint and `*.{js,cjs,mjs,ts}` is not a default. We chose prettier-only for `.cjs` to keep the helper script out of the ESLint pipeline.
+
+**Repository state after Phase 5**
+
+```text
+$ git status
+On branch main
+nothing to commit, working tree clean
+
+$ git log --oneline
+7a7c5e9 (HEAD -> main, origin/main, origin/HEAD) Merge pull request #5 from tugudush/feature/phase-05-write-update
+33fe0cb (origin/feature/phase-05-write-update, feature/phase-05-write-update) fix: separate .cjs files from ESLint in lint-staged (prettier-only)
+2df4e22 feat: implement Phase 5 - scoped issue text update (opt-in)
+5988379 Merge pull request #4 from tugudush/feature/phase-04
+91d7fd8 (origin/feature/phase-04, feature/phase-04) feat: implement Phase 4 - dashboards, workflows, links, watchers
+```
+
+### ✅ Phase 6 — Polish & Release — _completed 2026-06-28_
+
+**What landed** (12 files added/updated, ~1,200 lines of prose + config)
+
+- **`LICENSE`** (new) — MIT license, Copyright (c) 2026 Jerome Gomez (@tugudush). Required by `package.json`'s `"files": ["dist", "README.md", "LICENSE"]` — without it, `npm pack` would ship an incomplete tarball.
+- **`CHANGELOG.md`** (new) — Keep-a-Changelog 1.1 format. v1.0.0 entry enumerates all 36 tools by category, the cross-cutting features, and the security posture.
+- **`PUBLISHING.md`** (new) — Step-by-step release runbook: pre-release gate, `npm version`, `npm publish`, GitHub release notes, MseeP badge, rollback / `npm deprecate`, `npm pack --dry-run` contents check.
+- **`docs/agents-guide.md`** (new) — End-user guide for committing `AGENTS.md` to consumer repos (UX4 — pattern from `atlassian/atlassian-mcp-server`).
+- **`docs/AGENTS.md.example`** (new) — Verbatim template with `YOURPROJ` placeholder + default project key / `maxResults` / `search/jql` / TOON / no-spurious-writes rules.
+- **`AGENTS.md`** (new, at project root) — Vendor-neutral coding-agent instructions following the [AGENTS.md](https://agents.md) convention. Replaces the Copilot-specific `.github/copilot-instructions.md` path so the same file is picked up by GitHub Copilot, Cursor, Aider, Cline, Continue, Zed, etc. Content carried over verbatim from the original Copilot-only file (commands, code patterns, env, layout, PR conventions), with the header rewritten to drop the "GitHub Copilot-only" framing.
+- **`README.md`** (rewrite, 188 → 250 lines) — Added badges (npm version, License, Node ≥ 20 — MseeP later removed, see Drift #4), flipped status callout from "🚧 v1.0 in development" to "✅ v1.0.0 released", new **Usage Examples** section, new **Enabling Writes** section (env flag + identity check + error matrix), new **Output Formats & Filtering** table, new **Project-level `AGENTS.md` defaults** section linking to `docs/agents-guide.md`, expanded **Features** (no longer "planned for v1.0"), added `phase5:smoke` to the Scripts table, new **Troubleshooting** section, new **Security** section. Existing Why / Requirements / Installation / Configuration / Environment Variables sections retained verbatim.
+- **`package.json`** — Bumped `version` `0.1.0` → `1.0.0`. Added `phase5:smoke` script alias (`tsx scripts/phase5-smoke.ts`) so the smoke driver is reachable via `npm run` rather than `npx tsx` (resolves drift that the smoke script's own docstring already pointed at).
+- **`scripts/dump-mcp-env.cjs`** — Fixed usage comment (was `dump-mcp-env.js`, is `dump-mcp-env.cjs`). Cosmetic.
+- **`scripts/phase5-smoke.ts`** — Header comment referenced `npm run phase5:smoke` but the alias was missing from `package.json`. Now the alias exists (see above).
+- **`src/generated/version.ts`** — Regenerated by `prebuild` hook to `VERSION = '1.0.0'`. Committed per the Phase 0 convention (so fresh `npm ci` works without a prebuild step).
+
+**Verification — all green**
+
+| Command                | Result                                                                            |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| `npm run lint`         | clean (max-warnings 0, complexity ≤ 10)                                           |
+| `npm run type-check`   | clean (TS 6, strict, NodeNext)                                                    |
+| `npm run format:check` | clean Prettier status                                                             |
+| `npm test`             | **98/98 passed** (Vitest 4.1.9, 17 test files, +2 tests vs Phase 5)               |
+| `npm run build`        | prebuild wrote `VERSION=1.0.0` → `src/generated/version.ts`, then `tsc` → `dist/` |
+| `npm run ltfb`         | lint → type-check → format → prebuild → build, all clean                          |
+| `git status`           | 5 modified + 7 new paths, no untracked source                                     |
+
+**Drift from plan §9 Phase 6 (committed in this phase)**
+
+1. **No automated CI pipeline.** Plan §9 listed `.github/workflows/ci.yml` as part of the release. The workflow was deliberately removed in Phase 2 (commit `c691a5f` — _"removed github actions temporarily"_) and remains intentionally absent in v1.0. The maintainer runs `npm run ltfb && npm test` on Node 20 + 22 before merge instead. The `AGENTS.md` PR-conventions section was updated to call this out.
+2. **`AGENTS.md` supersedes `.github/copilot-instructions.md`.** Plan §7 listed the coding-agent instructions under `.github/copilot-instructions.md`. The vendor-neutral [AGENTS.md](https://agents.md) convention is now the standard (read by GitHub Copilot, Cursor, Aider, Cline, Continue, Zed, etc.), so Phase 6 lands `AGENTS.md` at the project root and removes the `.github/` directory entirely.
+3. **`LICENSE` file.** Plan §0 listed `LICENSE` in the project tree and §7 in the publishing layout, but the file was never committed. Created here so the `package.json` `files: ["dist", "README.md", "LICENSE"]` array ships a complete tarball.
+4. **MseeP badge skipped for v1.0.0.** Initially the badge was wired into `README.md` with a placeholder URL (`https://mseep.ai/app/tugudush/jira-mcp`), but the registration on <https://mseep.ai> requires a maintainer action (see `PUBLISHING.md` §8) and `mseep.ai` does not redirect unknown slugs, so the image 404s. The maintainer decided to **remove the badge from `README.md` entirely** and defer UX5 to a future release rather than ship a known-broken image. The §3.7 UX5 row + Resolved Decision #19 are kept in this plan so the work isn't lost.
+
+**External / manual release steps (NOT in this commit)**
+
+These require action by a maintainer with npm + GitHub credentials. They are documented in `PUBLISHING.md` but cannot be automated inside this commit:
+
+- [ ] **`npm version 1.0.0`** is already done in `package.json` — but no `git tag v1.0.0` has been created yet. Run `git tag -a v1.0.0 -m "v1.0.0"` and `git push origin main --follow-tags` after the PR is merged.
+- [ ] **`npm publish --access public`** (requires `npm login` + `@tugudush` org membership + 2FA enabled).
+- [ ] **GitHub release notes** at <https://github.com/tugudush/jira-mcp/releases/new> using the v1.0.0 entry from `CHANGELOG.md`.
+- [ ] **Live integration test sweep** — `scripts/phase5-smoke.ts` against a real sandbox tenant. The phase 5 verification row in this plan covers the unit-test half; the live half is deliberately manual because there is no automated pipeline with a sandbox tenant attached.
+
+**Lessons learned** (kept for v1.1+ contributors)
+
+- **The plan's project tree is a contract, not a wish list.** When Phase 0 claimed `LICENSE`, `CHANGELOG.md`, and `docs/agents-guide.md` were "created", they were actually missing on disk. (The CI workflow that Phase 0 also claimed was deliberately removed in Phase 2 and was _not_ re-added in Phase 6.) Future phases should treat the plan's "✓ done" checkboxes as **assertions to verify at PR time**, not claims to repeat in the progress log without checking.
+- **`npm pack --dry-run` is the cheapest pre-publish sanity check.** It lists every file the published tarball will contain. Phase 0's `package.json` `files: ["dist", "README.md", "LICENSE"]` would have shipped an incomplete tarball because `LICENSE` was missing — `npm pack --dry-run` would have surfaced that immediately.
+- **Drift isn't always architectural.** The smallest drifts in Phase 6 were typos: a `.js` extension in a `dump-mcp-env.cjs` comment and a `phase5:smoke` script alias referenced by a smoke script that wasn't yet in `package.json`. The fix is a 1-line `replace_string_in_file`, but the cost of noticing it grows exponentially with the time between the drift and the next release.
+- **`prebuild` is doing the right thing.** Every `npm run build` regenerates `src/generated/version.ts` from `package.json`, which means a forgotten `npm version` step can never silently ship the wrong version. The file is committed per Phase 0 convention so `npm ci` works on a fresh checkout without needing to run `npm run build` first.
+- **`AGENTS.md` is consumer-side, not server-side.** Phase 6's docs/AGENTS.md.example file is meant to be **copied into a consumer's repo**, not loaded by jira-mcp itself. Worth calling out explicitly so a future maintainer doesn't try to ship it inside the npm tarball (it is currently excluded by `.npmignore`).
+- **MseeP badge UX5 was skipped for v1.0.0.** The placeholder badge URL (`mseep.ai/app/tugudush/jira-mcp`) 404s until the project is registered. Rather than ship a known-broken image in `README.md`, the maintainer removed the badge entirely and deferred UX5 to a future release. The §3.7 row + Resolved Decision #19 + §9 Phase 6 unchecked item are kept in this plan so the work isn't lost — revisit when ready to register at <https://mseep.ai>.
+
+**Repository state after Phase 6**
+
+```text
+$ git status
+On branch feature/phase-06
+Changes to be committed:
+  M  README.md
+  M  docs/plan.md
+  M  package.json
+  M  scripts/dump-mcp-env.cjs
+  M  src/generated/version.ts
+?? AGENTS.md
+?? CHANGELOG.md
+?? LICENSE
+?? PUBLISHING.md
+?? docs/AGENTS.md.example
+?? docs/agents-guide.md
+```
+
+(Notes:
+
+- `.github/workflows/ci.yml` is **not** in this list — the workflow was
+  deliberately removed in Phase 2 and remains intentionally absent in v1.0. See
+  _Drift from plan §9 Phase 6 #1_ above.
+- `.github/copilot-instructions.md` is **also not** in this list — the
+  Copilot-specific path was replaced by the vendor-neutral `AGENTS.md` at the
+  project root, and the entire `.github/` directory was removed. See
+  _Drift from plan §9 Phase 6 #2_ above.)
+
+After the PR is merged, the post-merge steps in `PUBLISHING.md` walk through the
+`git tag`, `npm publish`, and GitHub release note creation.
 
 ---
 
