@@ -7,7 +7,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { fileURLToPath } from 'url'
-import path from 'path'
+import { realpathSync } from 'fs'
 
 import { initializeConfig, loadConfig } from './config.js'
 import {
@@ -644,15 +644,32 @@ async function runServer() {
   console.error(`[jira-mcp] Server successfully connected via stdio`)
 }
 
-// Start server if run directly (not loaded as module)
-const currentFilePath = fileURLToPath(import.meta.url)
-const isMain =
-  process.argv[1] &&
-  (path.resolve(currentFilePath) === path.resolve(process.argv[1]) ||
-    process.argv[1].endsWith('dist/index.js') ||
-    process.argv[1].endsWith('src/index.ts'))
+// Start the server only when this file is the process entry point (not when
+// imported as a module, e.g. by tests).
+//
+// realpathSync() is applied to BOTH sides so the comparison still holds when
+// the entry path is a symlink/junction to the real module file. That is the
+// normal case for every supported global launch on Windows:
+//   - `npm i -g` bins under nvm-for-windows (`C:\nvm4w\nodejs` is a junction)
+//   - the `npx` package cache
+// The previous check compared raw paths with path.resolve() (which does NOT
+// dereference symlinks) and fell back to `endsWith('dist/index.js')` (which
+// never matches Windows backslash paths). Both failed for symlinked global
+// installs, so runServer() was never called: the process spun up, printed no
+// stderr, and the MCP `initialize` handshake timed out.
+function isRunningAsEntryPoint(): boolean {
+  const invokedPath = process.argv[1]
+  if (!invokedPath) return false
+  try {
+    return (
+      realpathSync(invokedPath) === realpathSync(fileURLToPath(import.meta.url))
+    )
+  } catch {
+    return false
+  }
+}
 
-if (isMain) {
+if (isRunningAsEntryPoint()) {
   runServer().catch((error) => {
     console.error('Fatal error running server:', error)
     process.exit(1)

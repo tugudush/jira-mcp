@@ -5,6 +5,63 @@ All notable changes to `@tugudush/jira-mcp` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-06-30
+
+🐛 **Bug fix: server failed to start from a global install or `npx`.**
+
+When the package was launched via the global npm bin (`command: "jira-mcp"`) or
+`npx -y @tugudush/jira-mcp` on any platform where Node resolves the entry through
+a symlink or junction (notably **nvm-for-windows** at `C:\nvm4w\nodejs`,
+Homebrew, and the `npx` cache), the VS Code MCP client reported
+`Starting → Running → Stopped` with **no `[server stderr]` output** and the
+`initialize` handshake timed out. The server worked correctly when launched from
+a non-symlinked source build (`node dist/index.js` from the cloned repo).
+
+### Fixed
+
+- **Entry-point guard in `src/index.ts`.** The old guard only called
+  `runServer()` when `path.resolve(process.argv[1])` string-matched the module
+  path (or `argv[1]` ended with literal `dist/index.js`). Both checks failed on
+  symlinked/junctioned installs: `path.resolve()` does not dereference symlinks,
+  while Node's ESM loader sets `import.meta.url` to the realpath, and the
+  `endsWith('dist/index.js')` fallback used a forward slash and never matched a
+  Windows backslash path. The replacement compares `realpathSync()` of both
+  sides (with a `try/catch` guard), which is symlink- and slash-agnostic and
+  preserves the intended "don't auto-start when imported by tests" behavior.
+
+### Documentation
+
+- **README — Troubleshooting:** new entry **“Server shows `Starting → Running →
+Stopped` with no output (global install / npx)”** explaining the symptom, the
+  `≥ 1.0.1` upgrade fix, and the from-source workaround for users on the broken
+  `1.0.0`.
+- **Findings:** full investigation written up at
+  [`docs/bugs/unable-to-start-via-global-npm/findings.md`](docs/bugs/unable-to-start-via-global-npm/findings.md)
+  (frame-by-frame analysis of the recorded Output panel, npx evidence that
+  disproved the initial cmd-pipe theory, and the corrected diagnosis).
+
+### Verification
+
+- `npm run ltfb` (lint → type-check → format → build) clean.
+- `npm test` — **98 tests pass** across 17 files.
+- The prebuild `scripts/sync-version.ts` regenerates `src/generated/version.ts`
+  with `VERSION=1.0.1` so the running server self-identifies correctly.
+
+### Notes
+
+- The published `1.0.0` tarball still carries the broken guard. Until `1.0.1`
+  is published, **no** `mcp.json` tweak (including pointing `node` at the global
+  install path) resolves the issue — that path is the junction that triggers the
+  bug. Build from source or wait for `1.0.1`.
+- Symptom-only diagnostic: **zero `[server stderr]`** → server code never ran →
+  look at the entry-point guard, not the transport/pipe.
+- **Security:** the recording that drove this fix exposed live Jira and
+  Bitbucket API tokens. Rotate them; do not share the `.mp4` publicly.
+
+[1.0.1]: https://github.com/tugudush/jira-mcp/releases/tag/v1.0.1
+
+---
+
 ## [1.0.0] - 2026-06-28
 
 🎉 **First stable release.** 36 MCP tools across 10 read categories plus one
