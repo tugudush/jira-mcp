@@ -433,6 +433,48 @@ node scripts/dump-mcp-env.cjs > .mcp-env.sh && source .mcp-env.sh
 - Run `npm ci` to do a clean install from `package-lock.json`. If the issue
   persists, ensure your Node version is ≥ 20 (`node --version`).
 
+### Server shows `Starting → Running → Stopped` with no output (global install / npx)
+
+You started the server via the global bin (`"command": "jira-mcp"`) or
+`npx`, and the VS Code MCP panel goes **Starting → Running → Stopped** —
+with **no `[server stderr]` lines** in the Output channel. The
+`initialize` handshake either times out or the process exits immediately.
+
+This affected `@tugudush/jira-mcp@1.0.0` only: an entry-point guard in
+`src/index.ts` only started the server when `process.argv[1]` string-matched
+the module path, which fails when Node resolves a symlinked/junctioned
+install (nvm-for-windows, the npx cache, Homebrew, Linux `/usr/local/bin/…`,
+etc.). The same code runs fine when invoked directly from a non-symlinked
+source build.
+
+- **Upgrade to `≥ 1.0.1`** — the entry-point guard was rewritten to use
+  `realpathSync()` on both sides, which is symlink- and slash-agnostic.
+  After upgrading, both `"command": "jira-mcp"` and the `npx` config work
+  on every platform.
+- **Immediate workaround without upgrading:** run the server from a
+  **local source build** (a real path, NOT through any symlink/junction).
+  Clone, build, and point `.vscode/mcp.json` at the local entry:
+
+  ```jsonc
+  {
+    "servers": {
+      "jira-mcp": {
+        "type": "stdio",
+        "command": "node",
+        "args": ["C:/path/to/cloned/jira-mcp/dist/index.js"],
+        "env": {
+          "JIRA_BASE_URL": "…",
+          "JIRA_EMAIL": "…",
+          "JIRA_API_TOKEN": "…",
+        },
+      },
+    },
+  }
+  ```
+
+  See [`docs/bugs/unable-to-start-via-global-npm/findings.md`](docs/bugs/unable-to-start-via-global-npm/findings.md)
+  for the full investigation.
+
 ### Local development in this repo
 
 - The `phase5:smoke` script runs an end-to-end round-trip
